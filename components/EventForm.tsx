@@ -1,0 +1,279 @@
+/**
+ * 新增 / 编辑共用的表单组件
+ *  - 事件名称输入框（必填，为空拦截提交，见验收项 33）
+ *  - 目标日期选择（Android 原生对话框 / iOS 底部弹出选择器）
+ *  - 提交按钮；编辑页额外展示「删除」按钮
+ */
+import React, { useState } from 'react';
+import {
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
+import { Button, HelperText, TextInput } from 'react-native-paper';
+import DateTimePicker, {
+  DateTimePickerEvent,
+} from '@react-native-community/datetimepicker';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+import { COLORS } from '../constants/theme';
+import type { EventFormValues } from '../types/countdown';
+import { formatDateKey, getTodayKey, parseDateKey, toDateKey } from '../utils/date';
+
+interface Props {
+  /** 编辑回填：事件名称 */
+  initialTitle?: string;
+  /** 编辑回填：目标日期（YYYY-MM-DD），默认今天 */
+  initialTargetDate?: string;
+  /** 提交按钮文案，如「保存」「保存修改」 */
+  submitLabel: string;
+  /** 提交回调：由页面负责写入 store 并跳转 */
+  onSubmit: (values: EventFormValues) => Promise<void> | void;
+  /** 删除回调：仅编辑页传入，传入时显示删除按钮 */
+  onDelete?: () => void;
+}
+
+export default function EventForm({
+  initialTitle = '',
+  initialTargetDate,
+  submitLabel,
+  onSubmit,
+  onDelete,
+}: Props) {
+  const [title, setTitle] = useState(initialTitle);
+  const [dateKey, setDateKey] = useState(initialTargetDate ?? getTodayKey());
+  const [pickerVisible, setPickerVisible] = useState(false);
+  const [pickerDate, setPickerDate] = useState(() => parseDateKey(dateKey));
+  const [titleError, setTitleError] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  // 底部安全区（iOS 底部 home indicator），用于滚动内容与弹层底部留白
+  const insets = useSafeAreaInsets();
+
+  const handleTitleChange = (text: string) => {
+    setTitle(text);
+    if (text.trim()) {
+      setTitleError(false);
+    }
+  };
+
+  /** Android：原生对话框选择后自动收起；iOS：记录当前值，点「完成」确认 */
+  const handlePickerChange = (event: DateTimePickerEvent, selected?: Date) => {
+    if (Platform.OS === 'android') {
+      setPickerVisible(false);
+    }
+    if (event.type === 'set' && selected) {
+      setPickerDate(selected);
+      if (Platform.OS === 'android') {
+        setDateKey(toDateKey(selected));
+      }
+    }
+  };
+
+  const handlePickerConfirm = () => {
+    setDateKey(toDateKey(pickerDate));
+    setPickerVisible(false);
+  };
+
+  const handleSubmit = async () => {
+    const trimmed = title.trim();
+    if (!trimmed) {
+      setTitleError(true);
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await onSubmit({ title: trimmed, targetDate: dateKey });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <ScrollView
+      style={styles.scroll}
+      contentContainerStyle={[
+        styles.content,
+        { paddingBottom: Math.max(insets.bottom, 16) + 24 },
+      ]}
+      keyboardDismissMode="on-drag"
+      keyboardShouldPersistTaps="handled"
+    >
+      <TextInput
+        mode="outlined"
+        label="事件名称"
+        placeholder="例如：考研、发工资、纪念日"
+        maxLength={50}
+        value={title}
+        onChangeText={handleTitleChange}
+        error={titleError}
+        style={styles.input}
+      />
+      <HelperText type="error" visible={titleError}>
+        请输入事件名称
+      </HelperText>
+
+      <Pressable
+        style={({ pressed }) => [
+          styles.dateField,
+          pressed && styles.dateFieldPressed,
+        ]}
+        onPress={() => setPickerVisible(true)}
+        accessibilityRole="button"
+        accessibilityLabel="选择目标日期"
+      >
+        <View>
+          <Text style={styles.dateLabel}>目标日期</Text>
+          <Text style={styles.dateValue}>{formatDateKey(dateKey)}</Text>
+        </View>
+        <Text style={styles.dateAction}>选择</Text>
+      </Pressable>
+      <Text style={styles.tip}>
+        到目标日期当天会收到本地通知提醒（需授权通知权限）
+      </Text>
+
+      {Platform.OS === 'android' && pickerVisible && (
+        <DateTimePicker
+          value={pickerDate}
+          mode="date"
+          onChange={handlePickerChange}
+        />
+      )}
+
+      {/* iOS：以底部弹层方式展示日期选择器 */}
+      {Platform.OS === 'ios' && (
+        <Modal
+          visible={pickerVisible}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setPickerVisible(false)}
+        >
+          <Pressable
+            style={styles.modalMask}
+            onPress={() => setPickerVisible(false)}
+          >
+            <Pressable
+              style={[
+                styles.modalSheet,
+                { paddingBottom: insets.bottom + 24 },
+              ]}
+            >
+              <DateTimePicker
+                value={pickerDate}
+                mode="date"
+                display="spinner"
+                onChange={handlePickerChange}
+              />
+              <View style={styles.modalButtons}>
+                <Button onPress={() => setPickerVisible(false)}>取消</Button>
+                <Button mode="contained" onPress={handlePickerConfirm}>
+                  完成
+                </Button>
+              </View>
+            </Pressable>
+          </Pressable>
+        </Modal>
+      )}
+
+      <Button
+        mode="contained"
+        textColor="#FFFFFF"
+        loading={submitting}
+        disabled={submitting}
+        style={[styles.submit, { backgroundColor: COLORS.primary }]}
+        contentStyle={styles.submitContent}
+        onPress={handleSubmit}
+      >
+        {submitLabel}
+      </Button>
+
+      {onDelete && (
+        <Button
+          mode="text"
+          textColor={COLORS.danger}
+          style={styles.delete}
+          onPress={onDelete}
+        >
+          删除该事件
+        </Button>
+      )}
+    </ScrollView>
+  );
+}
+
+const styles = StyleSheet.create({
+  scroll: {
+    flex: 1,
+  },
+  content: {
+    padding: 16,
+    paddingBottom: 40,
+  },
+  input: {
+    backgroundColor: COLORS.card,
+  },
+  dateField: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: COLORS.card,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    marginTop: 4,
+  },
+  dateFieldPressed: {
+    opacity: 0.7,
+  },
+  dateLabel: {
+    fontSize: 12,
+    color: COLORS.subText,
+    marginBottom: 2,
+  },
+  dateValue: {
+    fontSize: 16,
+    color: COLORS.text,
+  },
+  dateAction: {
+    fontSize: 14,
+    color: COLORS.primary,
+  },
+  tip: {
+    marginTop: 6,
+    marginBottom: 20,
+    fontSize: 12,
+    color: COLORS.subText,
+  },
+  submit: {
+    borderRadius: 24,
+    marginTop: 8,
+  },
+  submitContent: {
+    paddingVertical: 6,
+  },
+  delete: {
+    marginTop: 8,
+    alignSelf: 'center',
+  },
+  modalMask: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.35)',
+  },
+  modalSheet: {
+    backgroundColor: COLORS.card,
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    paddingBottom: 24,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    paddingTop: 4,
+  },
+});
