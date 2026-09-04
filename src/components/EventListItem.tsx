@@ -6,9 +6,9 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Card } from 'react-native-paper';
 
-import { COLORS } from '../constants/theme';
-import type { CountdownItem } from '../types/countdown';
-import { formatCountdownLabel, formatDateKey, getDaysDiff } from '../utils/date';
+import { COLORS } from '@/constants/theme';
+import type { CountdownItem } from '@/types/countdown';
+import { formatCountdownLabel, formatDateKey, getDaysDiff } from '@/utils/date';
 
 interface Props {
   item: CountdownItem;
@@ -19,8 +19,7 @@ interface Props {
 export default function EventListItem({ item, onPress }: Props) {
   const diff = getDaysDiff(item.targetDate);
   const label = formatCountdownLabel(diff);
-  const statusColor =
-    diff > 0 ? COLORS.primary : diff === 0 ? COLORS.today : COLORS.past;
+  const statusColor = diff > 0 ? COLORS.primary : diff === 0 ? COLORS.today : COLORS.past;
 
   return (
     <Card

@@ -5,7 +5,7 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Button } from 'react-native-paper';
 
-import { COLORS } from '../constants/theme';
+import { COLORS } from '@/constants/theme';
 
 interface Props {
   /** 点击「新增事件」按钮的回调 */

@@ -1,0 +1,7 @@
+# 格式化忽略
+node_modules
+.expo
+dist
+package-lock.json
+docs
+assets

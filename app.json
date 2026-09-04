@@ -6,10 +6,7 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "plugins": [
-      "expo-notifications",
-      "@react-native-community/datetimepicker"
-    ],
+    "plugins": ["expo-notifications", "@react-native-community/datetimepicker"],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.countdownday.app"

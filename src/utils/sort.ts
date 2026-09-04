@@ -3,7 +3,7 @@
  * 规则（PRD 4.2）：自动按时间远近排序，临近事件优先置顶。
  * 实现：按目标日期升序（日期越早到期越靠前），同一天的事件按创建时间先后稳定排列。
  */
-import type { CountdownItem } from '../types/countdown';
+import type { CountdownItem } from '@/types/countdown';
 
 export function sortEventsByDate(events: CountdownItem[]): CountdownItem[] {
   return [...events].sort((a, b) => {

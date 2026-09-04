@@ -5,24 +5,14 @@
  *  - 提交按钮；编辑页额外展示「删除」按钮
  */
 import React, { useState } from 'react';
-import {
-  Modal,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Button, HelperText, TextInput } from 'react-native-paper';
-import DateTimePicker, {
-  DateTimePickerEvent,
-} from '@react-native-community/datetimepicker';
+import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { COLORS } from '../constants/theme';
-import type { EventFormValues } from '../types/countdown';
-import { formatDateKey, getTodayKey, parseDateKey, toDateKey } from '../utils/date';
+import { COLORS } from '@/constants/theme';
+import type { EventFormValues } from '@/types/countdown';
+import { formatDateKey, getTodayKey, parseDateKey, toDateKey } from '@/utils/date';
 
 interface Props {
   /** 编辑回填：事件名称 */
@@ -95,10 +85,7 @@ export default function EventForm({
   return (
     <ScrollView
       style={styles.scroll}
-      contentContainerStyle={[
-        styles.content,
-        { paddingBottom: Math.max(insets.bottom, 16) + 24 },
-      ]}
+      contentContainerStyle={[styles.content, { paddingBottom: Math.max(insets.bottom, 16) + 24 }]}
       keyboardDismissMode="on-drag"
       keyboardShouldPersistTaps="handled"
     >
@@ -117,10 +104,7 @@ export default function EventForm({
       </HelperText>
 
       <Pressable
-        style={({ pressed }) => [
-          styles.dateField,
-          pressed && styles.dateFieldPressed,
-        ]}
+        style={({ pressed }) => [styles.dateField, pressed && styles.dateFieldPressed]}
         onPress={() => setPickerVisible(true)}
         accessibilityRole="button"
         accessibilityLabel="选择目标日期"
@@ -131,16 +115,10 @@ export default function EventForm({
         </View>
         <Text style={styles.dateAction}>选择</Text>
       </Pressable>
-      <Text style={styles.tip}>
-        到目标日期当天会收到本地通知提醒（需授权通知权限）
-      </Text>
+      <Text style={styles.tip}>到目标日期当天会收到本地通知提醒（需授权通知权限）</Text>
 
       {Platform.OS === 'android' && pickerVisible && (
-        <DateTimePicker
-          value={pickerDate}
-          mode="date"
-          onChange={handlePickerChange}
-        />
+        <DateTimePicker value={pickerDate} mode="date" onChange={handlePickerChange} />
       )}
 
       {/* iOS：以底部弹层方式展示日期选择器 */}
@@ -151,16 +129,8 @@ export default function EventForm({
           animationType="slide"
           onRequestClose={() => setPickerVisible(false)}
         >
-          <Pressable
-            style={styles.modalMask}
-            onPress={() => setPickerVisible(false)}
-          >
-            <Pressable
-              style={[
-                styles.modalSheet,
-                { paddingBottom: insets.bottom + 24 },
-              ]}
-            >
+          <Pressable style={styles.modalMask} onPress={() => setPickerVisible(false)}>
+            <Pressable style={[styles.modalSheet, { paddingBottom: insets.bottom + 24 }]}>
               <DateTimePicker
                 value={pickerDate}
                 mode="date"
@@ -191,12 +161,7 @@ export default function EventForm({
       </Button>
 
       {onDelete && (
-        <Button
-          mode="text"
-          textColor={COLORS.danger}
-          style={styles.delete}
-          onPress={onDelete}
-        >
+        <Button mode="text" textColor={COLORS.danger} style={styles.delete} onPress={onDelete}>
           删除该事件
         </Button>
       )}

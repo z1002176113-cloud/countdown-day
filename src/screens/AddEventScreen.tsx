@@ -1,14 +1,11 @@
-/**
- * 新增事件页：填写名称 + 选择日期，保存后写入 store 并返回首页
- */
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
-import EventForm from '../components/EventForm';
-import { COLORS } from '../constants/theme';
-import { useCountdownStore } from '../store/useCountdownStore';
-import type { EventFormValues, RootStackParamList } from '../types/countdown';
+import EventForm from '@/components/EventForm';
+import { COLORS } from '@/constants/theme';
+import { useCountdownStore } from '@/store/useCountdownStore';
+import type { EventFormValues, RootStackParamList } from '@/types/countdown';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Add'>;
 
