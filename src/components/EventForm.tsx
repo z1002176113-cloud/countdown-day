@@ -52,13 +52,17 @@ export default function EventForm({
 
   /** Android：原生对话框选择后自动收起；iOS：记录当前值，点「完成」确认 */
   const handlePickerChange = (event: DateTimePickerEvent, selected?: Date) => {
-    if (Platform.OS === 'android') {
+    // 修复点②：Android 返回键/取消选择时（dismissed）也关闭弹窗
+    if (Platform.OS === 'android' && event.type === 'dismissed') {
       setPickerVisible(false);
+      return;
     }
     if (event.type === 'set' && selected) {
       setPickerDate(selected);
       if (Platform.OS === 'android') {
         setDateKey(toDateKey(selected));
+        // 修复点③：onChange 选中日期后自动关闭弹窗
+        setPickerVisible(false);
       }
     }
   };
@@ -89,19 +93,7 @@ export default function EventForm({
       keyboardDismissMode="on-drag"
       keyboardShouldPersistTaps="handled"
     >
-      <TextInput
-        mode="outlined"
-        label="事件名称"
-        placeholder="例如：考研、发工资、纪念日"
-        maxLength={50}
-        value={title}
-        onChangeText={handleTitleChange}
-        error={titleError}
-        style={styles.input}
-      />
-      <HelperText type="error" visible={titleError}>
-        请输入事件名称
-      </HelperText>
+      
 
       <Pressable
         style={({ pressed }) => [styles.dateField, pressed && styles.dateFieldPressed]}
@@ -117,36 +109,51 @@ export default function EventForm({
       </Pressable>
       <Text style={styles.tip}>到目标日期当天会收到本地通知提醒（需授权通知权限）</Text>
 
-      {Platform.OS === 'android' && pickerVisible && (
-        <DateTimePicker value={pickerDate} mode="date" onChange={handlePickerChange} />
-      )}
+      <TextInput
+        mode="outlined"
+        label="事件名称"
+        placeholder="例如：考研、发工资、纪念日"
+        maxLength={50}
+        value={title}
+        onChangeText={handleTitleChange}
+        error={titleError}
+        style={styles.input}
+      />
+      <HelperText type="error" visible={titleError}>
+        请输入事件名称
+      </HelperText>
 
-      {/* iOS：以底部弹层方式展示日期选择器 */}
-      {Platform.OS === 'ios' && (
-        <Modal
-          visible={pickerVisible}
-          transparent
-          animationType="slide"
-          onRequestClose={() => setPickerVisible(false)}
-        >
-          <Pressable style={styles.modalMask} onPress={() => setPickerVisible(false)}>
-            <Pressable style={[styles.modalSheet, { paddingBottom: insets.bottom + 24 }]}>
-              <DateTimePicker
-                value={pickerDate}
-                mode="date"
-                display="spinner"
-                onChange={handlePickerChange}
-              />
-              <View style={styles.modalButtons}>
-                <Button onPress={() => setPickerVisible(false)}>取消</Button>
-                <Button mode="contained" onPress={handlePickerConfirm}>
-                  完成
-                </Button>
-              </View>
+      {/* 修复点①：单一条件渲染总开关，pickerVisible 为 true 才渲染；平台差异在开关内部选形态 */}
+      {pickerVisible &&
+        (Platform.OS === 'ios' ? (
+          /* iOS：底部弹层 + spinner，点「完成」确认 */
+          <Modal
+            visible={pickerVisible}
+            transparent
+            animationType="slide"
+            onRequestClose={() => setPickerVisible(false)}
+          >
+            <Pressable style={styles.modalMask} onPress={() => setPickerVisible(false)}>
+              <Pressable style={[styles.modalSheet, { paddingBottom: insets.bottom + 24 }]}>
+                <DateTimePicker
+                  value={pickerDate}
+                  mode="date"
+                  display="spinner"
+                  onChange={handlePickerChange}
+                />
+                <View style={styles.modalButtons}>
+                  <Button onPress={() => setPickerVisible(false)}>取消</Button>
+                  <Button mode="contained" onPress={handlePickerConfirm}>
+                    完成
+                  </Button>
+                </View>
+              </Pressable>
             </Pressable>
-          </Pressable>
-        </Modal>
-      )}
+          </Modal>
+        ) : (
+          /* Android（含其它平台回退）：原生对话框，选中后经 onChange 自动关闭 */
+          <DateTimePicker value={pickerDate} mode="date" onChange={handlePickerChange} />
+        ))}
 
       <Button
         mode="contained"
