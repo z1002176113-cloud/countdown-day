@@ -135,12 +135,15 @@ export default function EventForm({
           >
             <Pressable style={styles.modalMask} onPress={() => setPickerVisible(false)}>
               <Pressable style={[styles.modalSheet, { paddingBottom: insets.bottom + 24 }]}>
-                <DateTimePicker
-                  value={pickerDate}
-                  mode="date"
-                  display="spinner"
-                  onChange={handlePickerChange}
-                />
+                {/* iOS spinner 需固定高度容器：UIDatePicker 不自报内容尺寸，否则高度塌陷为 0 导致滚轮空白 */}
+                <View style={styles.pickerContainer}>
+                  <DateTimePicker
+                    value={pickerDate}
+                    mode="date"
+                    display="spinner"
+                    onChange={handlePickerChange}
+                  />
+                </View>
                 <View style={styles.modalButtons}>
                   <Button onPress={() => setPickerVisible(false)}>取消</Button>
                   <Button mode="contained" onPress={handlePickerConfirm}>
@@ -242,6 +245,11 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
     paddingBottom: 24,
+  },
+  pickerContainer: {
+    height: 216,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   modalButtons: {
     flexDirection: 'row',
