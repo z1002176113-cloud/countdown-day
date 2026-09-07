@@ -157,8 +157,21 @@ export default function EventForm({
               </Pressable>
             </Pressable>
           </Modal>
+        ) : Platform.OS === 'web' ? (
+          /* Web：库不支持 web，改用浏览器原生 <input type="date">，选中后更新 dateKey 并关闭 */
+          <input
+            type="date"
+            defaultValue={dateKey}
+            onChange={(e) => {
+              const value = (e.target as HTMLInputElement).value;
+              if (value) {
+                setDateKey(value);
+                setPickerVisible(false);
+              }
+            }}
+          />
         ) : (
-          /* Android（含其它平台回退）：原生对话框，选中后经 onChange 自动关闭 */
+          /* Android：原生对话框，选中后经 onChange 自动关闭 */
           <DateTimePicker value={pickerDate} mode="date" onChange={handlePickerChange} />
         ))}
 
