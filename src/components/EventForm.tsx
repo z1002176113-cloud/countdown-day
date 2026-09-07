@@ -135,12 +135,16 @@ export default function EventForm({
           >
             <Pressable style={styles.modalMask} onPress={() => setPickerVisible(false)}>
               <Pressable style={[styles.modalSheet, { paddingBottom: insets.bottom + 24 }]}>
-                {/* iOS spinner 需固定高度容器：UIDatePicker 不自报内容尺寸，否则高度塌陷为 0 导致滚轮空白 */}
+                {/* iOS spinner 需固定尺寸：Fabric 新架构下原生 UIDatePicker 内在尺寸会算成 0，
+                    必须在组件自身 style 上显式给定宽高；themeVariant 强制亮色防止暗色下文字隐形 */}
                 <View style={styles.pickerContainer}>
                   <DateTimePicker
                     value={pickerDate}
                     mode="date"
                     display="spinner"
+                    themeVariant="light"
+                    textColor={COLORS.text}
+                    style={styles.iosPicker}
                     onChange={handlePickerChange}
                   />
                 </View>
@@ -247,9 +251,12 @@ const styles = StyleSheet.create({
     paddingBottom: 24,
   },
   pickerContainer: {
-    height: 216,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  iosPicker: {
+    width: '100%',
+    height: 216,
   },
   modalButtons: {
     flexDirection: 'row',
