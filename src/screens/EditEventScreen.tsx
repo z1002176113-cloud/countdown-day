@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Alert, StyleSheet, Text, View } from 'react-native';
+import { Alert, Platform, StyleSheet, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import EventForm from '@/components/EventForm';
@@ -23,16 +23,24 @@ export default function EditEventScreen({ navigation, route }: Props) {
   };
 
   const handleDelete = () => {
-    Alert.alert('删除事件', `确定删除「${item?.title ?? ''}」吗？删除后不可恢复。`, [
+    const message = `确定删除「${item?.title ?? ''}」吗？删除后不可恢复。`;
+    const performDelete = async (): Promise<void> => {
+      await deleteEvent(id);
+      navigation.goBack();
+    };
+
+    if (Platform.OS === 'web') {
+      // react-native-web 的 Alert.alert 不支持多按钮/onPress 回调（仅 window.alert），
+      // web 端改用浏览器原生 confirm 弹窗实现确定/取消
+      if (window.confirm(`删除事件\n${message}`)) {
+        void performDelete();
+      }
+      return;
+    }
+
+    Alert.alert('删除事件', message, [
       { text: '取消', style: 'cancel' },
-      {
-        text: '删除',
-        style: 'destructive',
-        onPress: async () => {
-          await deleteEvent(id);
-          navigation.goBack();
-        },
-      },
+      { text: '删除', style: 'destructive', onPress: () => void performDelete() },
     ]);
   };
 
