@@ -12,7 +12,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { COLORS } from '@/constants/theme';
 import type { CalendarType, EventFormValues } from '@/types/countdown';
-import { getTodayKey, parseDateKey, toDateKey } from '@/utils/date';
+import { getTodayKey, getWeekdayLabel, parseDateKey, toDateKey } from '@/utils/date';
 import { formatDisplayDate } from '@/utils/lunar';
 import LunarDatePicker from '@/components/LunarDatePicker';
 
@@ -160,6 +160,8 @@ export default function EventForm({
                     style={styles.iosPicker}
                     onChange={handlePickerChange}
                   />
+                  {/* 实时星期几：随 spinner 滚动联动，滚动即预览 */}
+                  <Text style={styles.iosWeekday}>{getWeekdayLabel(toDateKey(pickerDate))}</Text>
                 </View>
                 <View style={styles.modalButtons}>
                   <Button onPress={() => setPickerVisible(false)}>取消</Button>
@@ -317,6 +319,12 @@ const styles = StyleSheet.create({
   pickerContainer: {
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  iosWeekday: {
+    marginTop: 4,
+    fontSize: 15,
+    color: COLORS.primary,
+    fontWeight: '600',
   },
   iosPicker: {
     width: '100%',
