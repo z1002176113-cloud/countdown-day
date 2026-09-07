@@ -166,10 +166,13 @@ export default function EventForm({
               const value = (e.target as HTMLInputElement).value;
               if (value) {
                 setDateKey(value);
-                setPickerVisible(false);
               }
+              // 无论是否被 Delete/清空按钮清空（value === ''），都要关闭弹窗，
+              // 否则按删除键后弹窗会一直卡住不关闭
+              setPickerVisible(false);
             }}
           />
+
         ) : (
           /* Android：原生对话框，选中后经 onChange 自动关闭 */
           <DateTimePicker value={pickerDate} mode="date" onChange={handlePickerChange} />
