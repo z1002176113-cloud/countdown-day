@@ -142,6 +142,7 @@ export default function EventForm({
                     value={pickerDate}
                     mode="date"
                     display="spinner"
+                    locale="zh-CN"
                     themeVariant="light"
                     textColor={COLORS.text}
                     style={styles.iosPicker}
