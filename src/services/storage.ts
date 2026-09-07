@@ -12,7 +12,7 @@ function isValidDateKey(value: unknown): value is string {
 }
 
 function normalizeItem(raw: Record<string, unknown>): CountdownItem | null {
-  const { id, title, targetDate } = raw;
+  const { id, title, targetDate, calendarType } = raw;
   if (typeof id !== 'string' || typeof title !== 'string' || !isValidDateKey(targetDate)) {
     return null;
   }
@@ -21,6 +21,8 @@ function normalizeItem(raw: Record<string, unknown>): CountdownItem | null {
     id,
     title,
     targetDate,
+    // 兼容旧版本数据：历史存储没有 calendarType，回退为公历
+    calendarType: calendarType === 'lunar' ? 'lunar' : 'solar',
     createdAt: typeof raw.createdAt === 'number' ? raw.createdAt : now,
     updatedAt: typeof raw.updatedAt === 'number' ? raw.updatedAt : now,
     notificationId: typeof raw.notificationId === 'string' ? raw.notificationId : null,

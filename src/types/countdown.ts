@@ -3,14 +3,19 @@
  * 所有页面、store、本地存储、通知模块统一复用，保证数据类型安全。
  */
 
+/** 历法类型 */
+export type CalendarType = 'solar' | 'lunar';
+
 /** 单个倒数事件（一条数据记录） */
 export interface CountdownItem {
   /** 唯一标识：创建时生成（时间戳 36 进制 + 随机段） */
   id: string;
   /** 事件名称，例如「考研」「发工资」 */
   title: string;
-  /** 目标日期，仅日期部分，格式 YYYY-MM-DD（不含时分秒，避免时区干扰） */
+  /** 目标日期，仅日期部分，格式 YYYY-MM-DD（公历），倒计时统一用公历计算 */
   targetDate: string;
+  /** 历法类型：solar=公历，lunar=农历（影响展示与选择器） */
+  calendarType: CalendarType;
   /** 创建时间戳（毫秒），列表同日期时按它稳定排序 */
   createdAt: number;
   /** 最后修改时间戳（毫秒） */
@@ -26,6 +31,7 @@ export interface CountdownItem {
 export interface EventFormValues {
   title: string;
   targetDate: string;
+  calendarType: CalendarType;
 }
 
 /** 页面导航路由参数表（本项目共 3 个页面） */

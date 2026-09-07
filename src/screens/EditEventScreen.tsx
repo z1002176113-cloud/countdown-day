@@ -57,6 +57,7 @@ export default function EditEventScreen({ navigation, route }: Props) {
       <EventForm
         initialTitle={item.title}
         initialTargetDate={item.targetDate}
+        initialCalendarType={item.calendarType}
         submitLabel="保存修改"
         onSubmit={handleSubmit}
         onDelete={handleDelete}

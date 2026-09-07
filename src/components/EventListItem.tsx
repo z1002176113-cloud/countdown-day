@@ -8,7 +8,8 @@ import { Card } from 'react-native-paper';
 
 import { COLORS } from '@/constants/theme';
 import type { CountdownItem } from '@/types/countdown';
-import { formatCountdownLabel, formatDateKey, getDaysDiff } from '@/utils/date';
+import { formatCountdownLabel, getDaysDiff } from '@/utils/date';
+import { formatDisplayDate } from '@/utils/lunar';
 
 interface Props {
   item: CountdownItem;
@@ -32,7 +33,9 @@ export default function EventListItem({ item, onPress }: Props) {
         <Text style={styles.title} numberOfLines={1}>
           {item.title}
         </Text>
-        <Text style={styles.date}>{formatDateKey(item.targetDate)}</Text>
+        <Text style={styles.date}>
+          {formatDisplayDate(item.targetDate, item.calendarType)}
+        </Text>
       </View>
       <Text style={[styles.badge, { color: statusColor }]}>{label}</Text>
     </Card>

@@ -55,8 +55,20 @@ export function formatCountdownLabel(diff: number): string {
   return `已过去 ${Math.abs(diff)} 天`;
 }
 
+/** 星期几标签，如 '星期五'；getDay() 返回 0=周日 1=周一 … 6=周六 */
+const WEEKDAY_NAMES = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
+
+export function getWeekdayLabel(key: string): string {
+  return WEEKDAY_NAMES[parseDateKey(key).getDay()];
+}
+
 /** 日期字符串转中文展示，如 2026-09-03 -> '2026年9月3日' */
 export function formatDateKey(key: string): string {
   const d = parseDateKey(key);
   return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`;
+}
+
+/** 日期 + 星期，如 '2026年9月3日 星期四' */
+export function formatDateWithWeekday(key: string): string {
+  return `${formatDateKey(key)} ${getWeekdayLabel(key)}`;
 }

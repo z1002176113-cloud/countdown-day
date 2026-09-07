@@ -33,12 +33,13 @@ export const useCountdownStore = create<CountdownState>((set, get) => ({
     set({ events, hydrated: true });
   },
 
-  addEvent: async ({ title, targetDate }) => {
+  addEvent: async ({ title, targetDate, calendarType }) => {
     const now = Date.now();
     const base: CountdownItem = {
       id: createId(),
       title: title.trim(),
       targetDate,
+      calendarType,
       createdAt: now,
       updatedAt: now,
       notificationId: null,
@@ -50,7 +51,7 @@ export const useCountdownStore = create<CountdownState>((set, get) => ({
     await saveEvents(events);
   },
 
-  updateEvent: async (id, { title, targetDate }) => {
+  updateEvent: async (id, { title, targetDate, calendarType }) => {
     const prev = get().events.find((event) => event.id === id);
     if (!prev) {
       return;
@@ -60,6 +61,7 @@ export const useCountdownStore = create<CountdownState>((set, get) => ({
       ...prev,
       title: title.trim(),
       targetDate,
+      calendarType,
       updatedAt: Date.now(),
       notificationId: null,
     };

@@ -6,19 +6,23 @@
  */
 import React, { useState } from 'react';
 import { Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Button, HelperText, TextInput } from 'react-native-paper';
+import { Button, HelperText, SegmentedButtons, TextInput } from 'react-native-paper';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { COLORS } from '@/constants/theme';
-import type { EventFormValues } from '@/types/countdown';
-import { formatDateKey, getTodayKey, parseDateKey, toDateKey } from '@/utils/date';
+import type { CalendarType, EventFormValues } from '@/types/countdown';
+import { getTodayKey, parseDateKey, toDateKey } from '@/utils/date';
+import { formatDisplayDate } from '@/utils/lunar';
+import LunarDatePicker from '@/components/LunarDatePicker';
 
 interface Props {
   /** 编辑回填：事件名称 */
   initialTitle?: string;
   /** 编辑回填：目标日期（YYYY-MM-DD），默认今天 */
   initialTargetDate?: string;
+  /** 编辑回填：历法类型，默认公历 */
+  initialCalendarType?: CalendarType;
   /** 提交按钮文案，如「保存」「保存修改」 */
   submitLabel: string;
   /** 提交回调：由页面负责写入 store 并跳转 */
@@ -30,12 +34,14 @@ interface Props {
 export default function EventForm({
   initialTitle = '',
   initialTargetDate,
+  initialCalendarType = 'solar',
   submitLabel,
   onSubmit,
   onDelete,
 }: Props) {
   const [title, setTitle] = useState(initialTitle);
   const [dateKey, setDateKey] = useState(initialTargetDate ?? getTodayKey());
+  const [calendarType, setCalendarType] = useState<CalendarType>(initialCalendarType);
   const [pickerVisible, setPickerVisible] = useState(false);
   const [pickerDate, setPickerDate] = useState(() => parseDateKey(dateKey));
   const [titleError, setTitleError] = useState(false);
@@ -80,7 +86,7 @@ export default function EventForm({
     }
     setSubmitting(true);
     try {
-      await onSubmit({ title: trimmed, targetDate: dateKey });
+      await onSubmit({ title: trimmed, targetDate: dateKey, calendarType });
     } finally {
       setSubmitting(false);
     }
@@ -95,36 +101,42 @@ export default function EventForm({
     >
       
 
-      <Pressable
-        style={({ pressed }) => [styles.dateField, pressed && styles.dateFieldPressed]}
-        onPress={() => setPickerVisible(true)}
-        accessibilityRole="button"
-        accessibilityLabel="选择目标日期"
-      >
-        <View>
-          <Text style={styles.dateLabel}>目标日期</Text>
-          <Text style={styles.dateValue}>{formatDateKey(dateKey)}</Text>
+      <View style={styles.calendarSwitch}>
+        <SegmentedButtons
+          value={calendarType}
+          onValueChange={(v) => setCalendarType(v as CalendarType)}
+          buttons={[
+            { value: 'solar', label: '公历' },
+            { value: 'lunar', label: '农历' },
+          ]}
+        />
+      </View>
+
+      {calendarType === 'lunar' ? (
+        /* 农历：内联三字段选择器（年输入 + 月份/日期下拉），变更即联动公历 */
+        <View style={styles.lunarArea}>
+          <Text style={styles.dateLabel}>目标日期（农历）</Text>
+          <LunarDatePicker initialSolarKey={dateKey} onChange={setDateKey} />
+          <Text style={styles.lunarPreview}>{formatDisplayDate(dateKey, 'lunar')}</Text>
         </View>
-        <Text style={styles.dateAction}>选择</Text>
-      </Pressable>
-      <Text style={styles.tip}>到目标日期当天会收到本地通知提醒（需授权通知权限）</Text>
+      ) : (
+        <>
+          <Pressable
+            style={({ pressed }) => [styles.dateField, pressed && styles.dateFieldPressed]}
+            onPress={() => setPickerVisible(true)}
+            accessibilityRole="button"
+            accessibilityLabel="选择目标日期"
+          >
+            <View>
+              <Text style={styles.dateLabel}>目标日期（公历）</Text>
+              <Text style={styles.dateValue}>{formatDisplayDate(dateKey, 'solar')}</Text>
+            </View>
+            <Text style={styles.dateAction}>选择</Text>
+          </Pressable>
+          <Text style={styles.tip}>到目标日期当天会收到本地通知提醒（需授权通知权限）</Text>
 
-      <TextInput
-        mode="outlined"
-        label="事件名称"
-        placeholder="例如：考研、发工资、纪念日"
-        maxLength={50}
-        value={title}
-        onChangeText={handleTitleChange}
-        error={titleError}
-        style={styles.input}
-      />
-      <HelperText type="error" visible={titleError}>
-        请输入事件名称
-      </HelperText>
-
-      {/* 修复点①：单一条件渲染总开关，pickerVisible 为 true 才渲染；平台差异在开关内部选形态 */}
-      {pickerVisible &&
+          {/* 修复点①：单一条件渲染总开关，pickerVisible 为 true 才渲染；平台差异在开关内部选形态 */}
+          {pickerVisible &&
         (Platform.OS === 'ios' ? (
           /* iOS：底部弹层 + spinner，点「完成」确认 */
           <Modal
@@ -178,6 +190,22 @@ export default function EventForm({
           /* Android：原生对话框，选中后经 onChange 自动关闭 */
           <DateTimePicker value={pickerDate} mode="date" onChange={handlePickerChange} />
         ))}
+        </>
+      )}
+
+      <TextInput
+        mode="outlined"
+        label="事件名称"
+        placeholder="例如：考研、发工资、纪念日"
+        maxLength={50}
+        value={title}
+        onChangeText={handleTitleChange}
+        error={titleError}
+        style={styles.input}
+      />
+      <HelperText type="error" visible={titleError}>
+        请输入事件名称
+      </HelperText>
 
       <Button
         mode="contained"
@@ -207,6 +235,25 @@ const styles = StyleSheet.create({
   content: {
     padding: 16,
     paddingBottom: 40,
+  },
+  calendarSwitch: {
+    marginTop: 4,
+    marginBottom: 12,
+  },
+  lunarArea: {
+    backgroundColor: COLORS.card,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    marginTop: 4,
+  },
+  lunarPreview: {
+    marginTop: 8,
+    fontSize: 16,
+    fontWeight: '600',
+    color: COLORS.primary,
   },
   input: {
     backgroundColor: COLORS.card,
