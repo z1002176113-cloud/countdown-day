@@ -5,16 +5,29 @@
  *  - 提交按钮；编辑页额外展示「删除」按钮
  */
 import React, { useState } from 'react';
-import { Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Button, HelperText, SegmentedButtons, TextInput } from 'react-native-paper';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import PickerSheet, { PickerSheetColumn } from '@/components/PickerSheet';
 import { COLORS } from '@/constants/theme';
 import type { CalendarType, EventFormValues } from '@/types/countdown';
 import { getTodayKey, getWeekdayLabel, parseDateKey, toDateKey } from '@/utils/date';
 import { formatDisplayDate } from '@/utils/lunar';
 import LunarDatePicker from '@/components/LunarDatePicker';
+
+/** 公历可选的年份区间（与农历一致，覆盖绝大多数生日/纪念日/远期事件） */
+const SOLAR_MIN_YEAR = 1900;
+const SOLAR_MAX_YEAR = 2100;
+const YEAR_OPTIONS = Array.from({ length: SOLAR_MAX_YEAR - SOLAR_MIN_YEAR + 1 }, (_, i) => ({
+  value: SOLAR_MIN_YEAR + i,
+  label: String(SOLAR_MIN_YEAR + i),
+}));
+const MONTH_OPTIONS = Array.from({ length: 12 }, (_, i) => ({
+  value: i + 1,
+  label: `${i + 1}月`,
+}));
 
 interface Props {
   /** 编辑回填：事件名称 */
@@ -56,7 +69,7 @@ export default function EventForm({
     }
   };
 
-  /** Android：原生对话框选择后自动收起；iOS：记录当前值，点「完成」确认 */
+  /** Android：原生对话框选择后自动收起（iOS 公历已改用自建 PickerSheet） */
   const handlePickerChange = (event: DateTimePickerEvent, selected?: Date) => {
     // 修复点②：Android 返回键/取消选择时（dismissed）也关闭弹窗
     if (Platform.OS === 'android' && event.type === 'dismissed') {
@@ -76,6 +89,34 @@ export default function EventForm({
   const handlePickerConfirm = () => {
     setDateKey(toDateKey(pickerDate));
     setPickerVisible(false);
+  };
+
+  // iOS 公历选择弹层的三列数据：年 / 月 / 日（日选项按当月天数动态生成）
+  const daysInMonth = new Date(pickerDate.getFullYear(), pickerDate.getMonth() + 1, 0).getDate();
+  const DAY_OPTIONS = Array.from({ length: daysInMonth }, (_, i) => ({
+    value: i + 1,
+    label: `${i + 1}日`,
+  }));
+  const solarColumns: PickerSheetColumn[] = [
+    { key: 'year', label: '年', options: YEAR_OPTIONS, selected: pickerDate.getFullYear() },
+    { key: 'month', label: '月', options: MONTH_OPTIONS, selected: pickerDate.getMonth() + 1 },
+    { key: 'day', label: '日', options: DAY_OPTIONS, selected: pickerDate.getDate() },
+  ];
+
+  /** 点选某列：更新 pickerDate，并钳制日期不超过当月最大天数（如 2 月没有 30 日） */
+  const handleSolarColumnSelect = (columnKey: string, value: number) => {
+    let y = pickerDate.getFullYear();
+    let m = pickerDate.getMonth() + 1;
+    let d = pickerDate.getDate();
+    if (columnKey === 'year') {
+      y = value;
+    } else if (columnKey === 'month') {
+      m = value;
+    } else {
+      d = value;
+    }
+    d = Math.min(d, new Date(y, m, 0).getDate());
+    setPickerDate(new Date(y, m - 1, d));
   };
 
   const handleSubmit = async () => {
@@ -138,40 +179,16 @@ export default function EventForm({
           {/* 修复点①：单一条件渲染总开关，pickerVisible 为 true 才渲染；平台差异在开关内部选形态 */}
           {pickerVisible &&
         (Platform.OS === 'ios' ? (
-          /* iOS：底部弹层 + spinner，点「完成」确认 */
-          <Modal
+          /* iOS：自建中文年月日弹层（原生 UIDatePicker 语言跟随系统不可控，故自绘保证中文 + 实时星期几） */
+          <PickerSheet
             visible={pickerVisible}
-            transparent
-            animationType="slide"
-            onRequestClose={() => setPickerVisible(false)}
-          >
-            <Pressable style={styles.modalMask} onPress={() => setPickerVisible(false)}>
-              <Pressable style={[styles.modalSheet, { paddingBottom: insets.bottom + 24 }]}>
-                {/* iOS spinner 需固定尺寸：Fabric 新架构下原生 UIDatePicker 内在尺寸会算成 0，
-                    必须在组件自身 style 上显式给定宽高；themeVariant 强制亮色防止暗色下文字隐形 */}
-                <View style={styles.pickerContainer}>
-                  <DateTimePicker
-                    value={pickerDate}
-                    mode="date"
-                    display="spinner"
-                    locale="zh-CN"
-                    themeVariant="light"
-                    textColor={COLORS.text}
-                    style={styles.iosPicker}
-                    onChange={handlePickerChange}
-                  />
-                  {/* 实时星期几：随 spinner 滚动联动，滚动即预览 */}
-                  <Text style={styles.iosWeekday}>{getWeekdayLabel(toDateKey(pickerDate))}</Text>
-                </View>
-                <View style={styles.modalButtons}>
-                  <Button onPress={() => setPickerVisible(false)}>取消</Button>
-                  <Button mode="contained" onPress={handlePickerConfirm}>
-                    完成
-                  </Button>
-                </View>
-              </Pressable>
-            </Pressable>
-          </Modal>
+            title="选择日期（公历）"
+            subtitle={getWeekdayLabel(toDateKey(pickerDate))}
+            columns={solarColumns}
+            onSelectColumn={handleSolarColumnSelect}
+            onCancel={() => setPickerVisible(false)}
+            onConfirm={handlePickerConfirm}
+          />
         ) : Platform.OS === 'web' ? (
           /* Web：库不支持 web，改用浏览器原生 <input type="date">，选中后更新 dateKey 并关闭 */
           <input
@@ -304,35 +321,5 @@ const styles = StyleSheet.create({
   delete: {
     marginTop: 8,
     alignSelf: 'center',
-  },
-  modalMask: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.35)',
-  },
-  modalSheet: {
-    backgroundColor: COLORS.card,
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-    paddingBottom: 24,
-  },
-  pickerContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  iosWeekday: {
-    marginTop: 4,
-    fontSize: 15,
-    color: COLORS.primary,
-    fontWeight: '600',
-  },
-  iosPicker: {
-    width: '100%',
-    height: 216,
-  },
-  modalButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingTop: 4,
   },
 });
