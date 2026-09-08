@@ -16,6 +16,8 @@ export interface CountdownItem {
   targetDate: string;
   /** 历法类型：solar=公历，lunar=农历（影响展示与选择器） */
   calendarType: CalendarType;
+  /** 是否启用到期通知提醒：用户可在表单中自定义；不启用时 notificationId 固定为 null */
+  notifyEnabled: boolean;
   /** 创建时间戳（毫秒），列表同日期时按它稳定排序 */
   createdAt: number;
   /** 最后修改时间戳（毫秒） */
@@ -32,6 +34,7 @@ export interface EventFormValues {
   title: string;
   targetDate: string;
   calendarType: CalendarType;
+  notifyEnabled: boolean;
 }
 
 /** 页面导航路由参数表（本项目共 3 个页面） */

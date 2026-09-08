@@ -68,6 +68,10 @@ function buildTriggerDate(item: CountdownItem): Date | null {
 }
 
 export async function scheduleEventNotification(item: CountdownItem): Promise<string | null> {
+  // 用户关闭了该事件的提醒开关：不调度，返回 null（通知服务的统一闸门）
+  if (!item.notifyEnabled) {
+    return null;
+  }
   const triggerDate = buildTriggerDate(item);
   if (!triggerDate) {
     return null;

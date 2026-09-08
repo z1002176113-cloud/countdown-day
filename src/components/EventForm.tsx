@@ -6,7 +6,7 @@
  */
 import React, { useState } from 'react';
 import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Button, HelperText, SegmentedButtons, TextInput } from 'react-native-paper';
+import { Button, HelperText, SegmentedButtons, Switch, TextInput } from 'react-native-paper';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -36,6 +36,8 @@ interface Props {
   initialTargetDate?: string;
   /** 编辑回填：历法类型，默认公历 */
   initialCalendarType?: CalendarType;
+  /** 编辑回填：是否启用到期提醒，默认识别 */
+  initialNotify?: boolean;
   /** 提交按钮文案，如「保存」「保存修改」 */
   submitLabel: string;
   /** 提交回调：由页面负责写入 store 并跳转 */
@@ -48,6 +50,7 @@ export default function EventForm({
   initialTitle = '',
   initialTargetDate,
   initialCalendarType = 'solar',
+  initialNotify = true,
   submitLabel,
   onSubmit,
   onDelete,
@@ -55,6 +58,7 @@ export default function EventForm({
   const [title, setTitle] = useState(initialTitle);
   const [dateKey, setDateKey] = useState(initialTargetDate ?? getTodayKey());
   const [calendarType, setCalendarType] = useState<CalendarType>(initialCalendarType);
+  const [notifyEnabled, setNotifyEnabled] = useState(initialNotify);
   const [pickerVisible, setPickerVisible] = useState(false);
   const [pickerDate, setPickerDate] = useState(() => parseDateKey(dateKey));
   const [titleError, setTitleError] = useState(false);
@@ -127,7 +131,7 @@ export default function EventForm({
     }
     setSubmitting(true);
     try {
-      await onSubmit({ title: trimmed, targetDate: dateKey, calendarType });
+      await onSubmit({ title: trimmed, targetDate: dateKey, calendarType, notifyEnabled });
     } finally {
       setSubmitting(false);
     }
@@ -174,7 +178,6 @@ export default function EventForm({
             </View>
             <Text style={styles.dateAction}>选择</Text>
           </Pressable>
-          <Text style={styles.tip}>到目标日期当天会收到本地通知提醒（需授权通知权限）</Text>
 
           {/* 修复点①：单一条件渲染总开关，pickerVisible 为 true 才渲染；平台差异在开关内部选形态 */}
           {pickerVisible &&
@@ -211,6 +214,16 @@ export default function EventForm({
         ))}
         </>
       )}
+
+      <View style={styles.notifyRow}>
+        <View style={styles.notifyInfo}>
+          <Text style={styles.notifyLabel}>到期通知提醒</Text>
+          <Text style={styles.notifyDesc}>
+            {notifyEnabled ? '到目标日期当天会收到系统通知' : '已关闭，不会收到该事件的提醒'}
+          </Text>
+        </View>
+        <Switch value={notifyEnabled} onValueChange={setNotifyEnabled} color={COLORS.primary} />
+      </View>
 
       <TextInput
         mode="outlined"
@@ -305,9 +318,29 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: COLORS.primary,
   },
-  tip: {
-    marginTop: 6,
-    marginBottom: 20,
+  notifyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: COLORS.card,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    marginBottom: 16,
+  },
+  notifyInfo: {
+    flexShrink: 1,
+    marginRight: 12,
+  },
+  notifyLabel: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: COLORS.text,
+    marginBottom: 2,
+  },
+  notifyDesc: {
     fontSize: 12,
     color: COLORS.subText,
   },

@@ -23,6 +23,8 @@ function normalizeItem(raw: Record<string, unknown>): CountdownItem | null {
     targetDate,
     // 兼容旧版本数据：历史存储没有 calendarType，回退为公历
     calendarType: calendarType === 'lunar' ? 'lunar' : 'solar',
+    // 兼容旧版本数据：历史事件原本都启用了提醒，回退为开启
+    notifyEnabled: typeof raw.notifyEnabled === 'boolean' ? raw.notifyEnabled : true,
     createdAt: typeof raw.createdAt === 'number' ? raw.createdAt : now,
     updatedAt: typeof raw.updatedAt === 'number' ? raw.updatedAt : now,
     notificationId: typeof raw.notificationId === 'string' ? raw.notificationId : null,
