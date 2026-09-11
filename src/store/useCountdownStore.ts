@@ -15,6 +15,8 @@ function createId(): string {
 interface CountdownState {
   events: CountdownItem[];
   hydrated: boolean;
+  triggeredEventId: string | null;
+  setTriggeredEvent: (id: string | null) => void;
 
   init: () => Promise<void>;
   addEvent: (values: EventFormValues) => Promise<void>;
@@ -25,6 +27,8 @@ interface CountdownState {
 export const useCountdownStore = create<CountdownState>((set, get) => ({
   events: [],
   hydrated: false,
+  triggeredEventId: null,
+  setTriggeredEvent: (id) => set({ triggeredEventId: id }),
 
   init: async () => {
     const loaded = await loadEvents();

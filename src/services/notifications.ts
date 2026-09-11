@@ -89,6 +89,7 @@ export async function scheduleEventNotification(item: CountdownItem): Promise<st
         date: triggerDate,
         channelId: NOTIFICATION_CHANNEL_ID,
       },
+     
     });
   } catch (error) {
     console.warn('[notifications] 调度到期提醒失败：', item.id, error);

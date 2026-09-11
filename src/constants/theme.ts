@@ -21,4 +21,6 @@ export const COLORS = {
   card: '#FFFFFF',
   /** 分隔线 / 边框 */
   border: '#E5E7EB',
+  red:'red',
+  notificationHighlight: '#FF4D4F',
 } as const;

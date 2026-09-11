@@ -27,6 +27,7 @@ export interface CountdownItem {
    * 编辑/删除事件时用它取消旧通知；没有调度过则为 null。
    */
   notificationId: string | null;
+
 }
 
 /** 表单提交数据（新增 / 编辑共用） */
