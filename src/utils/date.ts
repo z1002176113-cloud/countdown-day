@@ -52,7 +52,7 @@ export function formatCountdownLabel(diff: number): string {
   if (diff === 0) {
     return '今日';
   }
-  return `已过去 ${Math.abs(diff)} 天`;
+  return `已过去 ${-diff} 天`;
 }
 
 /** 星期几标签，如 '星期五'；getDay() 返回 0=周日 1=周一 … 6=周六 */

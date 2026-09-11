@@ -12,4 +12,4 @@ export const NOTIFICATION_CHANNEL_ID = 'event-due';
 export const NOTIFICATION_CHANNEL_NAME = '事件到期提醒';
 
 /** 到期提醒触发时刻（目标日期当天的小时，本地时间） */
-export const REMIND_HOUR = 9;
+export const REMIND_HOUR = 11;

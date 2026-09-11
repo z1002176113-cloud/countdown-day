@@ -7,6 +7,8 @@ import HomeScreen from '@/screens/HomeScreen';
 import type { RootStackParamList } from '@/types/countdown';
 import { COLORS } from '@/constants/theme';
 
+import { useCountdownStore } from '@/store/useCountdownStore';
+
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function RootNavigator() {
@@ -16,7 +18,11 @@ export default function RootNavigator() {
       screenOptions={{
         headerTitleAlign: 'center',
         headerTintColor: COLORS.text,
-        headerStyle: { backgroundColor: COLORS.card },
+        headerStyle: { 
+          backgroundColor: useCountdownStore((s) => s.triggeredEventId)
+            ? COLORS.notificationHighlight
+            : COLORS.card,
+         },
         headerShadowVisible: false,
         contentStyle: { backgroundColor: COLORS.background },
       }}
