@@ -59,6 +59,7 @@ export default function EditEventScreen({ navigation, route }: Props) {
         initialTargetDate={item.targetDate}
         initialCalendarType={item.calendarType}
         initialNotify={item.notifyEnabled}
+        initialPinned={item.isPinned}
         submitLabel="保存修改"
         onSubmit={handleSubmit}
         onDelete={handleDelete}

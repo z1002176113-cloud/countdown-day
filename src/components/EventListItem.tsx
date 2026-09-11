@@ -25,19 +25,30 @@ export default function EventListItem({ item, onPress }: Props) {
   return (
     <Card
       mode="elevated"
-      style={styles.card}
-      contentStyle={styles.cardContent}
+      style={[styles.card, item.isPinned && styles.cardPinned]}
+      contentStyle={[styles.cardContent, item.isPinned && styles.cardContentPinned]}
       onPress={() => onPress(item.id)}
     >
       <View style={styles.info}>
-        <Text style={styles.title} numberOfLines={1}>
-          {item.title}
-        </Text>
+        <View style={styles.titleRow}>
+          {item.isPinned && <Text style={styles.pinTag}>置顶</Text>}
+          <Text style={[styles.title, item.isPinned && styles.titlePinned]} numberOfLines={1}>
+            {item.title}
+          </Text>
+        </View>
         <Text style={styles.date}>
           {formatDisplayDate(item.targetDate, item.calendarType)}
         </Text>
       </View>
-      <Text style={[styles.badge, { color: statusColor }]}>{label}</Text>
+      <Text
+        style={[
+          styles.badge,
+          { color: statusColor },
+          item.isPinned && styles.badgePinned,
+        ]}
+      >
+        {label}
+      </Text>
     </Card>
   );
 }
@@ -49,20 +60,46 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     marginBottom: 12,
   },
+  cardPinned: {
+    borderWidth: 1.5,
+    borderColor: COLORS.primary,
+  },
   cardContent: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 14,
     paddingHorizontal: 16,
   },
+  cardContentPinned: {
+    paddingVertical: 28,
+  },
   info: {
     flex: 1,
     marginRight: 12,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  pinTag: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: COLORS.card,
+    backgroundColor: COLORS.primary,
+    borderRadius: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    marginRight: 6,
+    overflow: 'hidden',
   },
   title: {
     fontSize: 17,
     fontWeight: '600',
     color: COLORS.text,
+  },
+  titlePinned: {
+    fontSize: 20,
+    fontWeight: '700',
   },
   date: {
     marginTop: 4,
@@ -73,5 +110,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     textAlign: 'right',
+  },
+  badgePinned: {
+    fontSize: 24,
+    fontWeight: '800',
   },
 });

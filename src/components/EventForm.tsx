@@ -38,6 +38,8 @@ interface Props {
   initialCalendarType?: CalendarType;
   /** 编辑回填：是否启用到期提醒，默认识别 */
   initialNotify?: boolean;
+  /** 编辑回填：是否置顶，默认不置顶 */
+  initialPinned?: boolean;
   /** 提交按钮文案，如「保存」「保存修改」 */
   submitLabel: string;
   /** 提交回调：由页面负责写入 store 并跳转 */
@@ -51,6 +53,7 @@ export default function EventForm({
   initialTargetDate,
   initialCalendarType = 'solar',
   initialNotify = true,
+  initialPinned = false,
   submitLabel,
   onSubmit,
   onDelete,
@@ -59,6 +62,7 @@ export default function EventForm({
   const [dateKey, setDateKey] = useState(initialTargetDate ?? getTodayKey());
   const [calendarType, setCalendarType] = useState<CalendarType>(initialCalendarType);
   const [notifyEnabled, setNotifyEnabled] = useState(initialNotify);
+  const [isPinned, setIsPinned] = useState(initialPinned);
   const [pickerVisible, setPickerVisible] = useState(false);
   const [pickerDate, setPickerDate] = useState(() => parseDateKey(dateKey));
   const [titleError, setTitleError] = useState(false);
@@ -131,7 +135,7 @@ export default function EventForm({
     }
     setSubmitting(true);
     try {
-      await onSubmit({ title: trimmed, targetDate: dateKey, calendarType, notifyEnabled });
+      await onSubmit({ title: trimmed, targetDate: dateKey, calendarType, notifyEnabled, isPinned });
     } finally {
       setSubmitting(false);
     }
@@ -214,6 +218,16 @@ export default function EventForm({
         ))}
         </>
       )}
+
+      <View style={styles.notifyRow}>
+        <View style={styles.notifyInfo}>
+          <Text style={styles.notifyLabel}>置顶该事件</Text>
+          <Text style={styles.notifyDesc}>
+            {isPinned ? '该事件将排在列表最前面，卡片更高、天数更大' : '按目标日期自动排序'}
+          </Text>
+        </View>
+        <Switch value={isPinned} onValueChange={setIsPinned} color={COLORS.primary} />
+      </View>
 
       <View style={styles.notifyRow}>
         <View style={styles.notifyInfo}>

@@ -37,7 +37,7 @@ export const useCountdownStore = create<CountdownState>((set, get) => ({
     set({ events, hydrated: true });
   },
 
-  addEvent: async ({ title, targetDate, calendarType, notifyEnabled }) => {
+  addEvent: async ({ title, targetDate, calendarType, notifyEnabled, isPinned }) => {
     const now = Date.now();
     const base: CountdownItem = {
       id: createId(),
@@ -45,6 +45,7 @@ export const useCountdownStore = create<CountdownState>((set, get) => ({
       targetDate,
       calendarType,
       notifyEnabled,
+      isPinned,
       createdAt: now,
       updatedAt: now,
       notificationId: null,
@@ -56,7 +57,7 @@ export const useCountdownStore = create<CountdownState>((set, get) => ({
     await saveEvents(events);
   },
 
-  updateEvent: async (id, { title, targetDate, calendarType, notifyEnabled }) => {
+  updateEvent: async (id, { title, targetDate, calendarType, notifyEnabled, isPinned }) => {
     const prev = get().events.find((event) => event.id === id);
     if (!prev) {
       return;
@@ -68,6 +69,7 @@ export const useCountdownStore = create<CountdownState>((set, get) => ({
       targetDate,
       calendarType,
       notifyEnabled,
+      isPinned,
       updatedAt: Date.now(),
       notificationId: null,
     };
