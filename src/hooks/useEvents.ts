@@ -8,6 +8,8 @@ export function useSortedEvents() {
   return useMemo(() => sortEventsByDate(events), [events]);
 }
 
+
+
 export function useHydrated() {
   return useCountdownStore((state) => state.hydrated);
 }

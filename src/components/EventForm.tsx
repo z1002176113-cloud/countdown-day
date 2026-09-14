@@ -223,7 +223,7 @@ export default function EventForm({
         <View style={styles.notifyInfo}>
           <Text style={styles.notifyLabel}>置顶该事件</Text>
           <Text style={styles.notifyDesc}>
-            {isPinned ? '该事件将排在列表最前面' : '按目标日期自动排序'}
+            {isPinned ? '该事件将排在列表最前面' : '按最新更改时间排序'}
           </Text>
         </View>
         <Switch value={isPinned} onValueChange={setIsPinned} color={COLORS.primary} />

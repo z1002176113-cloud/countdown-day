@@ -20,6 +20,7 @@ export interface CountdownItem {
   notifyEnabled: boolean;
   /** 是否置顶：置顶事件在列表中排前面，卡片更高、天数更大 */
   isPinned: boolean;
+  _isLatestPinned?: boolean;
   /** 创建时间戳（毫秒），列表同日期时按它稳定排序 */
   createdAt: number;
   /** 最后修改时间戳（毫秒） */

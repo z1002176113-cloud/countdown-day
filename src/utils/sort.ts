@@ -13,7 +13,7 @@ export function sortEventsByDate(events: CountdownItem[]): CountdownItem[] {
     }
     if (a.targetDate !== b.targetDate) {
       // YYYY-MM-DD 字符串可直接按字典序比较
-      return a.targetDate < b.targetDate ? -1 : 1;
+      return a.updatedAt > b.updatedAt ? -1 : 1;
     }
     return a.createdAt - b.createdAt;
   });
