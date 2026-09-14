@@ -4,51 +4,97 @@
  */
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { Card } from 'react-native-paper';
+import { Button, Card, Switch } from 'react-native-paper';
 
 import { COLORS } from '@/constants/theme';
 import type { CountdownItem } from '@/types/countdown';
 import { formatCountdownLabel, getDaysDiff } from '@/utils/date';
 import { formatDisplayDate } from '@/utils/lunar';
 
+
+
 interface Props {
   item: CountdownItem;
-  /** 点击事件（进入编辑页） */
+  isTop?: boolean;
+  /** 管理模式：展示置顶/通知/删除控件 */
+  manageMode?: boolean;
   onPress: (id: string) => void;
+  onTogglePin?: (id: string) => void;
+  onToggleNotify?: (id: string) => void;
+  onDelete?: (id: string) => void;
 }
 
-export default function EventListItem({ item, onPress }: Props) {
+
+export default function EventListItem({
+  item,
+  isTop,
+  manageMode = false,
+  onPress,
+  onTogglePin,
+  onToggleNotify,
+  onDelete,
+}: Props) {
   const diff = getDaysDiff(item.targetDate);
   const label = formatCountdownLabel(diff);
   const statusColor = diff > 0 ? COLORS.primary : diff === 0 ? COLORS.today : COLORS.past;
+  
 
   return (
     <Card
       mode="elevated"
-      style={[styles.card, item.isPinned && styles.cardPinned]}
-      contentStyle={[styles.cardContent, item.isPinned && styles.cardContentPinned]}
-      onPress={() => onPress(item.id)}
+      style={[styles.card, item.isPinned && styles.cardPinned, isTop && styles.cardisTopBlue]}
+      contentStyle={[
+        manageMode ? styles.cardContentManage : styles.cardContent,
+        item.isPinned && styles.cardContentPinned,
+      ]}
+      onPress={() => (manageMode ? undefined : onPress(item.id))}
     >
-      <View style={styles.info}>
-        <View style={styles.titleRow}>
-          {item.isPinned && <Text style={styles.pinTag}>置顶</Text>}
-          <Text style={[styles.title, item.isPinned && styles.titlePinned]} numberOfLines={1}>
-            {item.title}
+      <View style={styles.mainRow}>
+        <View style={styles.info}>
+          <View style={styles.titleRow}>
+            {item.isPinned && <Text style={styles.pinTag}>置顶</Text>}
+            <Text style={[styles.title, item.isPinned && styles.titlePinned]} numberOfLines={1}>
+              {item.title}
+            </Text>
+          </View>
+          <Text style={styles.date}>
+            {formatDisplayDate(item.targetDate, item.calendarType)}
           </Text>
         </View>
-        <Text style={styles.date}>
-          {formatDisplayDate(item.targetDate, item.calendarType)}
+        <Text
+          style={[
+            styles.badge,
+            { color: statusColor },
+            item.isPinned && styles.badgePinned,
+          ]}
+        >
+          {label}
         </Text>
       </View>
-      <Text
-        style={[
-          styles.badge,
-          { color: statusColor },
-          item.isPinned && styles.badgePinned,
-        ]}
-      >
-        {label}
-      </Text>
+
+      {manageMode && (
+        <View style={styles.manageRow}>
+          <View style={styles.manageItem}>
+            <Text style={styles.manageLabel}>置顶</Text>
+            <Switch
+              value={item.isPinned}
+              onValueChange={() => onTogglePin?.(item.id)}
+              color={COLORS.primary}
+            />
+          </View>
+          <View style={styles.manageItem}>
+            <Text style={styles.manageLabel}>通知</Text>
+            <Switch
+              value={item.notifyEnabled}
+              onValueChange={() => onToggleNotify?.(item.id)}
+              color={COLORS.primary}
+            />
+          </View>
+          <Button mode="text" compact textColor={COLORS.danger} onPress={() => onDelete?.(item.id)}>
+            删除
+          </Button>
+        </View>
+      )}
     </Card>
   );
 }
@@ -64,14 +110,42 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: COLORS.primary,
   },
+  cardisTopBlue:{
+    backgroundColor: COLORS.primary,
+  },
   cardContent: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 14,
     paddingHorizontal: 16,
   },
+  cardContentManage: {
+    paddingHorizontal: 16,
+  },
   cardContentPinned: {
     paddingVertical: 28,
+  },
+  mainRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+  },
+  manageRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+  },
+  manageItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  manageLabel: {
+    fontSize: 13,
+    color: COLORS.subText,
+    marginRight: 6,
   },
   info: {
     flex: 1,

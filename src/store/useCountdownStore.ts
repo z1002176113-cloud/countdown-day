@@ -22,6 +22,8 @@ interface CountdownState {
   addEvent: (values: EventFormValues) => Promise<void>;
   updateEvent: (id: string, values: EventFormValues) => Promise<void>;
   deleteEvent: (id: string) => Promise<void>;
+  togglePinned: (id: string) => void;
+  toggleNotify: (id: string) => Promise<void>;
 }
 
 export const useCountdownStore = create<CountdownState>((set, get) => ({
@@ -86,6 +88,36 @@ export const useCountdownStore = create<CountdownState>((set, get) => ({
       await cancelEventNotification(target.notificationId);
     }
     const events = get().events.filter((event) => event.id !== id);
+    set({ events });
+    await saveEvents(events);
+  },
+
+  /** 管理模式下直接切换置顶，不重新调度通知 */
+  togglePinned: (id) => {
+    const events = get().events.map((event) =>
+      event.id === id ? { ...event, isPinned: !event.isPinned, updatedAt: Date.now() } : event,
+    );
+    set({ events });
+    void saveEvents(events);
+  },
+
+  /** 管理模式下直接切换通知开关：先取消旧通知，再按新开关状态决定是否重排 */
+  toggleNotify: async (id) => {
+    const target = get().events.find((event) => event.id === id);
+    if (!target) {
+      return;
+    }
+    await cancelEventNotification(target.notificationId);
+    const notifyEnabled = !target.notifyEnabled;
+    const base: CountdownItem = {
+      ...target,
+      notifyEnabled,
+      updatedAt: Date.now(),
+      notificationId: null,
+    };
+    const notificationId = await scheduleEventNotification(base);
+    const next: CountdownItem = { ...base, notificationId };
+    const events = get().events.map((event) => (event.id === id ? next : event));
     set({ events });
     await saveEvents(events);
   },

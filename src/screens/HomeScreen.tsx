@@ -1,5 +1,14 @@
-import React from 'react';
-import { ActivityIndicator, FlatList, StyleSheet, View } from 'react-native';
+import React, { useLayoutEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { FAB } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -8,6 +17,7 @@ import EmptyState from '@/components/EmptyState';
 import EventListItem from '@/components/EventListItem';
 import { COLORS } from '@/constants/theme';
 import { useSortedEvents, useHydrated } from '@/hooks/useEvents';
+import { useCountdownStore } from '@/store/useCountdownStore';
 import type { RootStackParamList } from '@/types/countdown';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
@@ -16,9 +26,45 @@ export default function HomeScreen({ navigation }: Props) {
   const sortedEvents = useSortedEvents();
   const hydrated = useHydrated();
   const insets = useSafeAreaInsets();
+  const togglePinned = useCountdownStore((s) => s.togglePinned);
+  const toggleNotify = useCountdownStore((s) => s.toggleNotify);
+  const deleteEvent = useCountdownStore((s) => s.deleteEvent);
+  const [manageMode, setManageMode] = useState(false);
+
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerRight: () => (
+        <Pressable hitSlop={8} onPress={() => setManageMode((m) => !m)}>
+          <Text style={[styles.manageBtn, manageMode && styles.manageBtnActive]}>
+            {manageMode ? '完成' : '管理'}
+          </Text>
+        </Pressable>
+      ),
+    });
+  }, [navigation, manageMode]);
 
   const handlePressItem = (id: string) => {
     navigation.navigate('Edit', { id });
+  };
+
+  const handleDelete = (id: string) => {
+    const item = sortedEvents.find((event) => event.id === id);
+    const message = `确定删除「${item?.title ?? ''}」吗？删除后不可恢复。`;
+    const performDelete = async (): Promise<void> => {
+      await deleteEvent(id);
+    };
+
+    if (Platform.OS === 'web') {
+      if (window.confirm(`删除事件\n${message}`)) {
+        void performDelete();
+      }
+      return;
+    }
+
+    Alert.alert('删除事件', message, [
+      { text: '取消', style: 'cancel' },
+      { text: '删除', style: 'destructive', onPress: () => void performDelete() },
+    ]);
   };
 
   return (
@@ -31,7 +77,17 @@ export default function HomeScreen({ navigation }: Props) {
         <FlatList
           data={sortedEvents}
           keyExtractor={(item) => item.id}
-          renderItem={({ item }) => <EventListItem item={item} onPress={handlePressItem} />}
+          renderItem={({ item, index }) => (
+            <EventListItem
+              item={item}
+              isTop={index === 0}
+              manageMode={manageMode}
+              onPress={handlePressItem}
+              onTogglePin={(id) => togglePinned(id)}
+              onToggleNotify={(id) => void toggleNotify(id)}
+              onDelete={handleDelete}
+            />
+          )}
           contentContainerStyle={
             sortedEvents.length === 0 ? styles.emptyContent : styles.listContent
           }
@@ -55,6 +111,15 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
+  },
+  manageBtn: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: COLORS.primary,
+    marginRight: 8,
+  },
+  manageBtnActive: {
+    color: COLORS.danger,
   },
   loading: {
     flex: 1,
