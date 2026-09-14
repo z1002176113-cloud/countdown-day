@@ -121,6 +121,7 @@ const styles = StyleSheet.create({
   },
   cardContentManage: {
     paddingHorizontal: 16,
+    paddingVertical: 14,
   },
   cardContentPinned: {
     paddingVertical: 28,
@@ -128,7 +129,7 @@ const styles = StyleSheet.create({
   mainRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 14,
+    flex: 1,
   },
   manageRow: {
     flexDirection: 'row',
