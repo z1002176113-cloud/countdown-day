@@ -11,7 +11,9 @@ import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/dat
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import PickerSheet, { PickerSheetColumn } from '@/components/PickerSheet';
+import TimePickerField from '@/components/TimePickerField';
 import { COLORS } from '@/constants/theme';
+import { DEFAULT_EVENT_TIME, DEFAULT_NOTIFY_TIME } from '@/constants/storage';
 import type { CalendarType, EventFormValues } from '@/types/countdown';
 import { getTodayKey, getWeekdayLabel, parseDateKey, toDateKey } from '@/utils/date';
 import { formatDisplayDate } from '@/utils/lunar';
@@ -34,10 +36,14 @@ interface Props {
   initialTitle?: string;
   /** 编辑回填：目标日期（YYYY-MM-DD），默认今天 */
   initialTargetDate?: string;
+  /** 编辑回填：目标时刻（HH:mm），默认 00:00 */
+  initialTargetTime?: string;
   /** 编辑回填：历法类型，默认公历 */
   initialCalendarType?: CalendarType;
   /** 编辑回填：是否启用到期提醒，默认识别 */
   initialNotify?: boolean;
+  /** 编辑回填：自定义提醒时刻（HH:mm），默认 11:00 */
+  initialNotifyTime?: string;
   /** 编辑回填：是否置顶，默认不置顶 */
   initialPinned?: boolean;
   /** 提交按钮文案，如「保存」「保存修改」 */
@@ -51,8 +57,10 @@ interface Props {
 export default function EventForm({
   initialTitle = '',
   initialTargetDate,
+  initialTargetTime = DEFAULT_EVENT_TIME,
   initialCalendarType = 'solar',
   initialNotify = true,
+  initialNotifyTime = DEFAULT_NOTIFY_TIME,
   initialPinned = false,
   submitLabel,
   onSubmit,
@@ -60,8 +68,10 @@ export default function EventForm({
 }: Props) {
   const [title, setTitle] = useState(initialTitle);
   const [dateKey, setDateKey] = useState(initialTargetDate ?? getTodayKey());
+  const [targetTime, setTargetTime] = useState(initialTargetTime);
   const [calendarType, setCalendarType] = useState<CalendarType>(initialCalendarType);
   const [notifyEnabled, setNotifyEnabled] = useState(initialNotify);
+  const [notifyTime, setNotifyTime] = useState(initialNotifyTime);
   const [isPinned, setIsPinned] = useState(initialPinned);
   const [pickerVisible, setPickerVisible] = useState(false);
   const [pickerDate, setPickerDate] = useState(() => parseDateKey(dateKey));
@@ -135,7 +145,15 @@ export default function EventForm({
     }
     setSubmitting(true);
     try {
-      await onSubmit({ title: trimmed, targetDate: dateKey, calendarType, notifyEnabled, isPinned });
+      await onSubmit({
+        title: trimmed,
+        targetDate: dateKey,
+        targetTime,
+        calendarType,
+        notifyEnabled,
+        notifyTime,
+        isPinned,
+      });
     } finally {
       setSubmitting(false);
     }
@@ -219,6 +237,9 @@ export default function EventForm({
         </>
       )}
 
+      {/* 目标时刻：时 + 分，公历/农历共用，与目标日期合成完整时间戳 */}
+      <TimePickerField label="目标时刻" value={targetTime} onChange={setTargetTime} />
+
       <View style={styles.notifyRow}>
         <View style={styles.notifyInfo}>
           <Text style={styles.notifyLabel}>置顶该事件</Text>
@@ -233,11 +254,16 @@ export default function EventForm({
         <View style={styles.notifyInfo}>
           <Text style={styles.notifyLabel}>到期通知提醒</Text>
           <Text style={styles.notifyDesc}>
-            {notifyEnabled ? '到目标日期当天会收到系统通知' : '已关闭，不会收到该事件的提醒'}
+            {notifyEnabled ? `到期当天 ${notifyTime} 发送系统通知` : '已关闭，不会收到该事件的提醒'}
           </Text>
         </View>
         <Switch value={notifyEnabled} onValueChange={setNotifyEnabled} color={COLORS.primary} />
       </View>
+
+      {/* 自定义提醒时刻：仅在开启通知时展示 */}
+      {notifyEnabled && (
+        <TimePickerField label="提醒时间（到期当天发送通知的时刻）" value={notifyTime} onChange={setNotifyTime} />
+      )}
 
       <TextInput
         mode="outlined"

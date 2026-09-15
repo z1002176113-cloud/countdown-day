@@ -4,10 +4,9 @@ import * as Notifications from 'expo-notifications';
 import {
   NOTIFICATION_CHANNEL_ID,
   NOTIFICATION_CHANNEL_NAME,
-  REMIND_HOUR,
 } from '@/constants/storage';
 import type { CountdownItem } from '@/types/countdown';
-import { getDaysDiff, parseDateKey } from '@/utils/date';
+import { combineDateTimeKey } from '@/utils/date';
 
 export function setupNotificationHandler(): void {
   Notifications.setNotificationHandler({
@@ -56,11 +55,9 @@ export async function initializeNotifications(): Promise<void> {
 }
 
 function buildTriggerDate(item: CountdownItem): Date | null {
-  if (getDaysDiff(item.targetDate) <= 0) {
-    return null;
-  }
-  const trigger = parseDateKey(item.targetDate);
-  trigger.setHours(REMIND_HOUR, 0, 0, 0);
+  // 触发时刻 = 目标日期 + 该事件自定义的提醒时刻（notifyTime）
+  const trigger = new Date(combineDateTimeKey(item.targetDate, item.notifyTime));
+  // 目标时刻已过去（含今天但提醒时刻已过）则不调度
   if (trigger.getTime() <= Date.now()) {
     return null;
   }

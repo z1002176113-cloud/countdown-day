@@ -10,7 +10,7 @@ import {
   View,
 } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { FAB } from 'react-native-paper';
+import { FAB, IconButton } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import EmptyState from '@/components/EmptyState';
@@ -34,11 +34,20 @@ export default function HomeScreen({ navigation }: Props) {
   useLayoutEffect(() => {
     navigation.setOptions({
       headerRight: () => (
-        <Pressable hitSlop={8} onPress={() => setManageMode((m) => !m)}>
-          <Text style={[styles.manageBtn, manageMode && styles.manageBtnActive]}>
-            {manageMode ? '完成' : '管理'}
-          </Text>
-        </Pressable>
+        <View style={styles.headerRow}>
+          <IconButton
+            icon="cog-outline"
+            size={22}
+            iconColor={COLORS.text}
+            onPress={() => navigation.navigate('Settings')}
+            style={styles.headerIcon}
+          />
+          <Pressable hitSlop={8} onPress={() => setManageMode((m) => !m)}>
+            <Text style={[styles.manageBtn, manageMode && styles.manageBtnActive]}>
+              {manageMode ? '完成' : '管理'}
+            </Text>
+          </Pressable>
+        </View>
       ),
     });
   }, [navigation, manageMode]);
@@ -111,6 +120,14 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerIcon: {
+    margin: 0,
+    marginRight: 4,
   },
   manageBtn: {
     fontSize: 16,

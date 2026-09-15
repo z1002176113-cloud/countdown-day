@@ -4,6 +4,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import AddEventScreen from '@/screens/AddEventScreen';
 import EditEventScreen from '@/screens/EditEventScreen';
 import HomeScreen from '@/screens/HomeScreen';
+import SettingsScreen from '@/screens/SettingsScreen';
 import type { RootStackParamList } from '@/types/countdown';
 import { COLORS } from '@/constants/theme';
 
@@ -30,6 +31,7 @@ export default function RootNavigator() {
       <Stack.Screen name="Home" component={HomeScreen} options={{ title: '极简倒数日' }} />
       <Stack.Screen name="Add" component={AddEventScreen} options={{ title: '新增事件' }} />
       <Stack.Screen name="Edit" component={EditEventScreen} options={{ title: '编辑事件' }} />
+      <Stack.Screen name="Settings" component={SettingsScreen} options={{ title: '设置' }} />
     </Stack.Navigator>
   );
 }

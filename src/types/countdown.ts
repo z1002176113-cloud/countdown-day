@@ -14,10 +14,14 @@ export interface CountdownItem {
   title: string;
   /** 目标日期，仅日期部分，格式 YYYY-MM-DD（公历），倒计时统一用公历计算 */
   targetDate: string;
+  /** 目标时刻，格式 HH:mm（24 小时制），与 targetDate 共同构成完整目标时间戳 */
+  targetTime: string;
   /** 历法类型：solar=公历，lunar=农历（影响展示与选择器） */
   calendarType: CalendarType;
-  /** 是否启用到期通知提醒：用户可在表单中自定义；不启用时 notificationId 固定为 null */
+  /** 是否启用到期提醒：不启用时 notificationId 固定为 null */
   notifyEnabled: boolean;
+  /** 自定义提醒时刻，格式 HH:mm（24 小时制），到期当天按该时刻触发系统通知 */
+  notifyTime: string;
   /** 是否置顶：置顶事件在列表中排前面，卡片更高、天数更大 */
   isPinned: boolean;
   _isLatestPinned?: boolean;
@@ -37,12 +41,14 @@ export interface CountdownItem {
 export interface EventFormValues {
   title: string;
   targetDate: string;
+  targetTime: string;
   calendarType: CalendarType;
   notifyEnabled: boolean;
+  notifyTime: string;
   isPinned: boolean;
 }
 
-/** 页面导航路由参数表（本项目共 3 个页面） */
+/** 页面导航路由参数表（本项目共 4 个页面） */
 export type RootStackParamList = {
   /** 首页：事件列表 */
   Home: undefined;
@@ -50,4 +56,6 @@ export type RootStackParamList = {
   Add: undefined;
   /** 编辑事件页：携带事件 id */
   Edit: { id: string };
+  /** 设置页 */
+  Settings: undefined;
 };

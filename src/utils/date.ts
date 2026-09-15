@@ -31,6 +31,77 @@ export function parseDateKey(key: string): Date {
   return new Date(y, m - 1, d);
 }
 
+/** 解析 HH:mm 为时分，非法输入回退为 00:00，并对越界值做钳制 */
+export function parseTimeKey(timeKey: string): { hour: number; minute: number } {
+  const h = Number.parseInt((timeKey || '00:00').split(':')[0] ?? '0', 10);
+  const m = Number.parseInt((timeKey || '00:00').split(':')[1] ?? '0', 10);
+  return {
+    hour: Number.isFinite(h) ? Math.min(Math.max(h, 0), 23) : 0,
+    minute: Number.isFinite(m) ? Math.min(Math.max(m, 0), 59) : 0,
+  };
+}
+
+/**
+ * 把「目标日期 + 目标时刻」合成完整的本地时间戳。
+ * @param dateKey YYYY-MM-DD
+ * @param timeKey HH:mm
+ */
+export function combineDateTimeKey(dateKey: string, timeKey: string): number {
+  const { hour, minute } = parseTimeKey(timeKey);
+  const date = parseDateKey(dateKey);
+  date.setHours(hour, minute, 0, 0);
+  return date.getTime();
+}
+
+/**
+ * 目标时间戳与「当前时间」的差值分解。
+ * sign = 1 未来 / -1 已过去 / 0 恰好到达（各分量均为 0）。
+ * 天按 24 小时整块计数，便于展示「剩余 X天 X时 X分 X秒」。
+ */
+export interface TimeSpan {
+  sign: 1 | -1 | 0;
+  days: number;
+  hours: number;
+  minutes: number;
+  seconds: number;
+}
+
+export function getTimeSpan(targetTs: number, nowTs: number): TimeSpan {
+  let diffMs = targetTs - nowTs;
+  let sign: TimeSpan['sign'] = 0;
+  if (diffMs > 0) {
+    sign = 1;
+  } else if (diffMs < 0) {
+    sign = -1;
+    diffMs = -diffMs;
+  }
+  const totalSeconds = Math.floor(diffMs / 1000);
+  return {
+    sign,
+    days: Math.floor(totalSeconds / 86400),
+    hours: Math.floor((totalSeconds % 86400) / 3600),
+    minutes: Math.floor((totalSeconds % 3600) / 60),
+    seconds: totalSeconds % 60,
+  };
+}
+
+/**
+ * 倒计时展示文案：
+ * 未来「剩余 X天 X时 X分[X秒]」；已过去「已过去 …」；恰好到达「已到达」
+ * @param showSeconds 是否展示秒位（由全局设置控制）
+ */
+export function formatTimeSpan(span: TimeSpan, showSeconds: boolean): string {
+  if (span.sign === 0) {
+    return '已到达';
+  }
+  const prefix = span.sign > 0 ? '剩余' : '已过去';
+  const parts = [`${span.days}天`, `${span.hours}时`, `${span.minutes}分`];
+  if (showSeconds) {
+    parts.push(`${span.seconds}秒`);
+  }
+  return `${prefix} ${parts.join(' ')}`;
+}
+
 /**
  * 计算目标日期距今天的天数差：diff = 目标日期 - 今天
  * 返回值 > 0 表示未来、= 0 表示今天、< 0 表示已过去
@@ -39,20 +110,6 @@ export function getDaysDiff(targetKey: string): number {
   const target = parseDateKey(targetKey).getTime();
   const today = parseDateKey(getTodayKey()).getTime();
   return Math.round((target - today) / DAY_MS);
-}
-
-/**
- * 倒计时展示文案（固定规则，见 PRD 4.2）：
- * 未来「剩余 XX 天」；今天「今日」；过去「已过去 XX 天」
- */
-export function formatCountdownLabel(diff: number): string {
-  if (diff > 0) {
-    return `剩余 ${diff} 天`;
-  }
-  if (diff === 0) {
-    return '今日';
-  }
-  return `已过去 ${-diff} 天`;
 }
 
 /** 星期几标签，如 '星期五'；getDay() 返回 0=周日 1=周一 … 6=周六 */

@@ -8,7 +8,14 @@ import { Button, Card, Switch } from 'react-native-paper';
 
 import { COLORS } from '@/constants/theme';
 import type { CountdownItem } from '@/types/countdown';
-import { formatCountdownLabel, getDaysDiff } from '@/utils/date';
+import { useNow } from '@/hooks/useNow';
+import { useCountdownStore } from '@/store/useCountdownStore';
+import {
+  combineDateTimeKey,
+  formatTimeSpan,
+  getDaysDiff,
+  getTimeSpan,
+} from '@/utils/date';
 import { formatDisplayDate } from '@/utils/lunar';
 
 
@@ -34,8 +41,13 @@ export default function EventListItem({
   onToggleNotify,
   onDelete,
 }: Props) {
+  // 秒级实时刷新：共享提示器节流，卡片只在每秒跳动时重渲染
+  const now = useNow();
+  const showSeconds = useCountdownStore((s) => s.showSeconds);
+  const targetTs = combineDateTimeKey(item.targetDate, item.targetTime);
+  const span = getTimeSpan(targetTs, now);
+  const label = formatTimeSpan(span, showSeconds);
   const diff = getDaysDiff(item.targetDate);
-  const label = formatCountdownLabel(diff);
   const statusColor = diff > 0 ? COLORS.primary : diff === 0 ? COLORS.today : COLORS.past;
   
 
@@ -58,13 +70,15 @@ export default function EventListItem({
             </Text>
           </View>
           <Text style={styles.date}>
-            {formatDisplayDate(item.targetDate, item.calendarType)}
+            {formatDisplayDate(item.targetDate, item.calendarType)} {item.targetTime}
           </Text>
         </View>
         <Text
+          numberOfLines={1}
           style={[
             styles.badge,
             { color: statusColor },
+            showSeconds && styles.badgeWithSeconds,
             item.isPinned && styles.badgePinned,
           ]}
         >
@@ -185,6 +199,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     textAlign: 'right',
+    flexShrink: 1,
+    marginLeft: 8,
+  },
+  badgeWithSeconds: {
+    fontSize: 13,
   },
   badgePinned: {
     fontSize: 24,

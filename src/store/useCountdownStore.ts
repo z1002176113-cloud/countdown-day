@@ -1,7 +1,13 @@
 import { create } from 'zustand';
 
+import { DEFAULT_EVENT_TIME, DEFAULT_NOTIFY_TIME } from '@/constants/storage';
 import type { CountdownItem, EventFormValues } from '@/types/countdown';
-import { loadEvents, saveEvents } from '@/services/storage';
+import {
+  loadEvents,
+  loadSettings,
+  saveEvents,
+  saveSettings,
+} from '@/services/storage';
 import {
   cancelEventNotification,
   scheduleEventNotification,
@@ -17,6 +23,9 @@ interface CountdownState {
   hydrated: boolean;
   triggeredEventId: string | null;
   setTriggeredEvent: (id: string | null) => void;
+  /** 全局设置：倒计时是否展示秒位 */
+  showSeconds: boolean;
+  setShowSeconds: (value: boolean) => void;
 
   init: () => Promise<void>;
   addEvent: (values: EventFormValues) => Promise<void>;
@@ -31,22 +40,38 @@ export const useCountdownStore = create<CountdownState>((set, get) => ({
   hydrated: false,
   triggeredEventId: null,
   setTriggeredEvent: (id) => set({ triggeredEventId: id }),
+  showSeconds: true,
+  setShowSeconds: (value) => {
+    set({ showSeconds: value });
+    void saveSettings({ showSeconds: value });
+  },
 
   init: async () => {
     const loaded = await loadEvents();
     const events = await syncEventNotifications(loaded);
     await saveEvents(events);
-    set({ events, hydrated: true });
+    const settings = await loadSettings();
+    set({ events, showSeconds: settings.showSeconds, hydrated: true });
   },
 
-  addEvent: async ({ title, targetDate, calendarType, notifyEnabled, isPinned }) => {
+  addEvent: async ({
+    title,
+    targetDate,
+    targetTime,
+    calendarType,
+    notifyEnabled,
+    notifyTime,
+    isPinned,
+  }) => {
     const now = Date.now();
     const base: CountdownItem = {
       id: createId(),
       title: title.trim(),
       targetDate,
+      targetTime: targetTime ?? DEFAULT_EVENT_TIME,
       calendarType,
       notifyEnabled,
+      notifyTime: notifyTime ?? DEFAULT_NOTIFY_TIME,
       isPinned,
       createdAt: now,
       updatedAt: now,
@@ -59,7 +84,10 @@ export const useCountdownStore = create<CountdownState>((set, get) => ({
     await saveEvents(events);
   },
 
-  updateEvent: async (id, { title, targetDate, calendarType, notifyEnabled, isPinned }) => {
+  updateEvent: async (
+    id,
+    { title, targetDate, targetTime, calendarType, notifyEnabled, notifyTime, isPinned },
+  ) => {
     const prev = get().events.find((event) => event.id === id);
     if (!prev) {
       return;
@@ -69,8 +97,10 @@ export const useCountdownStore = create<CountdownState>((set, get) => ({
       ...prev,
       title: title.trim(),
       targetDate,
+      targetTime: targetTime ?? DEFAULT_EVENT_TIME,
       calendarType,
       notifyEnabled,
+      notifyTime: notifyTime ?? DEFAULT_NOTIFY_TIME,
       isPinned,
       updatedAt: Date.now(),
       notificationId: null,
