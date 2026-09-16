@@ -1,18 +1,16 @@
 # =============================================================
-# 名称：React Native 自动化打包 + 发布到 GitHub Release
+# 名称：EAS 云端打包 + 发布到 GitHub Release
 # 说明：
 #   - 仅当推送「v*」开头的 git tag 时才触发（如 v1.0.0）
-#   - 普通 commit / PR 推送不会触发本流程
-#   - 产物：Android release APK + iOS AdHoc IPA
+#   - 普通 commit / 分支推送不会触发本流程
+#   - Android：调用 EAS 云构建（免费），产出可安装的 APK
+#   - iOS：可选开关 ENABLE_IOS_BUILD=true 才构建 IPA
+#     （iOS 必须付费 Apple 开发者账号，免费账号无法输出可分发的 IPA）
 #   - 产物自动上传到对应 tag 的 GitHub Release 页面
 # 前置条件（详见 README_RELEASE.md）：
-#   - 仓库必须已有 android/、ios/ 原生目录（裸 RN 工程原生自带；
-#     Expo 工程需先执行 npx expo prebuild -p android -p ios 生成）
-#   - 以下 GitHub Secrets 全部配置好：
-#     ANDROID_KEYSTORE_BASE64 / ANDROID_KEYSTORE_PASSWORD /
-#     ANDROID_KEY_ALIAS / ANDROID_KEY_PASSWORD /
-#     IOS_CERTIFICATE_BASE64 / IOS_CERTIFICATE_PASSWORD /
-#     IOS_MOBILEPROVISION_BASE64 / IOS_TEAM_ID / IOS_PROVISIONING_PROFILE_NAME
+#   - 仓库设置 Actions secret：EXPO_TOKEN（expo.dev 的 Access Token）
+#   - 可选：启用 iOS 时额外配置 9 个 Apple 证书 Secrets +
+#     仓库变量 ENABLE_IOS_BUILD=true
 # =============================================================
 name: Build & Release
 
@@ -33,21 +31,17 @@ concurrency:
 
 jobs:
   # -----------------------------------------------------------
-  # 任务 1：Android Release APK
+  # 任务 1：Android APK（EAS 云构建，免费可行）
   # -----------------------------------------------------------
   build-android:
-    name: Android Release APK
+    name: Android APK (EAS)
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 150
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
     steps:
       - name: 检出代码
         uses: actions/checkout@v4
-
-      - name: 配置 Java 17（RN/AGP 8 要求）
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
 
       - name: 配置 Node 20
         uses: actions/setup-node@v4
@@ -55,75 +49,48 @@ jobs:
           node-version: '20'
           cache: npm
 
-      - name: 缓存 Gradle
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: gradle-${{ runner.os }}-${{ hashFiles('android/**/*.gradle*', 'android/gradle/wrapper/gradle-wrapper.properties') }}
-          restore-keys: |
-            gradle-${{ runner.os }}-
-
       - name: 安装依赖
         run: npm ci
 
-      - name: 还原签名文件与签名配置
-        shell: bash
+      - name: 校验 EXPO_TOKEN 已配置
+        if: ${{ secrets.EXPO_TOKEN == '' }}
         run: |
-          # 1) keystore 文件：Secret 里存的是 base64 字符串，解码后放到
-          #    android/app/ 下（build.gradle 中 storeFile 相对路径指向这里）
-          mkdir -p android/app
-          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android/app/keystore.jks
-          # 2) keystore.properties：build.gradle 用它读取密码/别名（见 README_RELEASE.md 的 gradle 改造）
-          cat > android/keystore.properties <<'EOF'
-          KEYSTORE_FILE=keystore.jks
-          KEYSTORE_PASSWORD=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          KEY_ALIAS=${{ secrets.ANDROID_KEY_ALIAS }}
-          KEY_PASSWORD=${{ secrets.ANDROID_KEY_PASSWORD }}
-          EOF
-          # 校验文件确实生成，避免后续"哑巴失败"
-          ls -l android/app/keystore.jks android/keystore.properties
+          echo "::error::未配置 EXPO_TOKEN。请在仓库 Settings → Secrets → Actions 添加（详见 README_RELEASE.md）。"
+          exit 1
 
-      - name: 编译 Release APK
-        working-directory: android
+      - name: EAS 构建 APK（等待云端构建完成）
+        # --json 把构建结果打印为 JSON，我们从中取 artifacts.buildUrl
         run: |
-          chmod +x gradlew
-          ./gradlew assembleRelease --no-daemon
-          # 产物路径（标准 RN 工程）：android/app/build/outputs/apk/release/app-release.apk
-          test -f app/build/outputs/apk/release/app-release.apk \
-            && echo "APK 生成成功：" && ls -lh app/build/outputs/apk/release/
+          npx --yes eas-cli@latest build \
+            --platform android --profile preview --non-interactive --json > build.json
+          node -e "const fs=require('fs');const b=JSON.parse(fs.readFileSync('build.json','utf8'));const x=Array.isArray(b)?b[0]:b;const u=(x&&x.artifacts&&x.artifacts.buildUrl)||'';if(!u){console.error('未拿到构建产物 URL：');console.error(JSON.stringify(b,null,2));process.exit(1)};require('fs').writeFileSync('apk-url.txt',u)"
+
+      - name: 下载 APK
+        run: |
+          curl -fsSL -o countdown-day.apk "$(cat apk-url.txt)"
+          ls -lh countdown-day.apk
 
       - name: 上传 APK 产物（供 Release 任务消费）
         uses: actions/upload-artifact@v4
         with:
           name: apk
-          path: android/app/build/outputs/apk/release/app-release.apk
+          path: countdown-day.apk
           if-no-files-found: error
 
   # -----------------------------------------------------------
-  # 任务 2：iOS AdHoc IPA（必须使用 macOS runner）
-  # 注意：AdHoc 包只能安装到苹果后台已登记 UDID 的设备，
-  #       本项目不放企业签名（In-House），也不需要上架 App Store。
+  # 任务 2：iOS IPA（EAS，默认关闭）
+  # 注意：Apple 强制签名，分发包必须付费开发者账号（$99/年）。
+  # 免费 Apple ID 只能自装 3 台设备、7 天过期，无法作为公开 Release 产物。
+  # 启用方法：仓库变量 ENABLE_IOS_BUILD=true + 配置 9 个 Apple Secrets，
+  # 并在 eas.json 对应 profile 加 "distribution": "internal"。
   # -----------------------------------------------------------
   build-ios:
-    name: iOS AdHoc IPA
-    runs-on: macos-latest
-    timeout-minutes: 90
+    name: iOS IPA (EAS, 需付费证书)
+    if: ${{ vars.ENABLE_IOS_BUILD == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
     env:
-      # ---------- 工程常量：按你的 Xcode 工程名调整 ----------
-      # workspace 名，裸 RN 通常为「项目名.xcworkspace」
-      IOS_WORKSPACE: countdown-day.xcworkspace
-      # scheme 名，通常等于 Xcode target 名
-      IOS_SCHEME: countdown-day
-      # Bundle ID，必须与 Apple 后台 / 描述文件里的完全一致
-      IOS_BUNDLE_ID: com.countdownday.app
-      # ---------- 签名相关 Secret（不进仓库，运行时注入） ----------
-      IOS_CERTIFICATE_BASE64: ${{ secrets.IOS_CERTIFICATE_BASE64 }}
-      IOS_CERTIFICATE_PASSWORD: ${{ secrets.IOS_CERTIFICATE_PASSWORD }}
-      IOS_MOBILEPROVISION_BASE64: ${{ secrets.IOS_MOBILEPROVISION_BASE64 }}
-      IOS_TEAM_ID: ${{ secrets.IOS_TEAM_ID }}
-      IOS_PROVISIONING_PROFILE_NAME: ${{ secrets.IOS_PROVISIONING_PROFILE_NAME }}
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
     steps:
       - name: 检出代码
         uses: actions/checkout@v4
@@ -134,112 +101,36 @@ jobs:
           node-version: '20'
           cache: npm
 
-      - name: 缓存 CocoaPods
-        uses: actions/cache@v4
-        with:
-          path: |
-            ios/Pods
-            ~/Library/Caches/CocoaPods
-          key: pods-${{ runner.os }}-${{ hashFiles('ios/Podfile.lock') }}
-          restore-keys: |
-            pods-${{ runner.os }}-
-
       - name: 安装依赖
         run: npm ci
 
-      - name: 安装 Pods
-        working-directory: ios
-        run: pod install
-
-      - name: 创建一次性钥匙串并导入证书
+      - name: 校验 EXPO_TOKEN 已配置
+        if: ${{ secrets.EXPO_TOKEN == '' }}
         run: |
-          # 生成随机临时钥匙串密码（只在本次 runner 生命周期有效）
-          KCP=$(openssl rand -base64 12)
-          echo "KCP=$KCP" >> "$GITHUB_ENV"
-          # 创建并设为默认钥匙串
-          security create-keychain -p "$KCP" build.keychain
-          security default-keychain -s build.keychain
-          security unlock-keychain -p "$KCP" build.keychain
-          security set-keychain-settings -lut 21600 build.keychain
-          # 把 .p12 证书（含私钥）解到本地再导入
-          echo "$IOS_CERTIFICATE_BASE64" | base64 --decode > cert.p12
-          security import cert.p12 -k build.keychain -P "$IOS_CERTIFICATE_PASSWORD" \
-            -T /usr/bin/codesign -T /usr/bin/security
-          # 允许 codesign 访问钥匙串，否则签名阶段会报 -25294
-          security set-key-partition-list -S apple-tool:,apple: -s -k "$KCP" build.keychain
-          security list-keychains -d user -s build.keychain
+          echo "::error::未配置 EXPO_TOKEN。请在仓库 Settings → Secrets → Actions 添加（详见 README_RELEASE.md）。"
+          exit 1
 
-      - name: 安装 AdHoc 描述文件
+      - name: EAS 构建 IPA（等待云端构建完成）
         run: |
-          mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
-          echo "$IOS_MOBILEPROVISION_BASE64" | base64 --decode > profile.mobileprovision
-          # 从描述文件里抽出 UUID，Xcode 要求文件名必须是 UUID.mobileprovision
-          UUID=$(grep -a -A1 "<key>UUID</key>" profile.mobileprovision \
-            | grep -Eo "[0-9A-Fa-f-]{36}" | head -n 1)
-          echo "Profile UUID=$UUID"
-          test -n "$UUID"
-          cp profile.mobileprovision \
-            "$HOME/Library/MobileDevice/Provisioning Profiles/$UUID.mobileprovision"
+          npx --yes eas-cli@latest build \
+            --platform ios --profile preview --non-interactive --json > build.json
+          node -e "const fs=require('fs');const b=JSON.parse(fs.readFileSync('build.json','utf8'));const x=Array.isArray(b)?b[0]:b;const u=(x&&x.artifacts&&x.artifacts.buildUrl)||'';if(!u){console.error('未拿到构建产物 URL：');console.error(JSON.stringify(b,null,2));process.exit(1)};require('fs').writeFileSync('ipa-url.txt',u)"
 
-      - name: 生成 ExportOptions.plist（导出方式 ad-hoc）
+      - name: 下载 IPA
         run: |
-          cat > ios/ExportOptions.plist <<EOF
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-            <key>method</key>
-            <string>ad-hoc</string>
-            <key>signingStyle</key>
-            <string>manual</string>
-            <key>stripSwiftSymbols</key>
-            <true/>
-            <key>teamID</key>
-            <string>${IOS_TEAM_ID}</string>
-            <key>provisioningProfiles</key>
-            <dict>
-              <key>${IOS_BUNDLE_ID}</key>
-              <string>${IOS_PROVISIONING_PROFILE_NAME}</string>
-            </dict>
-          </dict>
-          </plist>
-          EOF
-          cat ios/ExportOptions.plist
-
-      - name: Archive（Release 配置 + 手动签名）
-        run: |
-          xcodebuild \
-            -workspace ios/${IOS_WORKSPACE} \
-            -scheme ${IOS_SCHEME} \
-            -configuration Release \
-            -destination 'generic/platform=iOS' \
-            -archivePath build/CountDown.xcarchive \
-            archive \
-            CODE_SIGN_STYLE=Manual \
-            DEVELOPMENT_TEAM=${IOS_TEAM_ID} \
-            PROVISIONING_PROFILE_SPECIFIER="${IOS_PROVISIONING_PROFILE_NAME}" \
-            -quiet
-
-      - name: Export（导出 ad-hoc IPA）
-        run: |
-          mkdir -p build/export
-          xcodebuild \
-            -archivePath build/CountDown.xcarchive \
-            -exportOptionsPlist ios/ExportOptions.plist \
-            -exportPath build/export \
-            -quiet
-          echo "IPA 列出："
-          ls -lh build/export/*.ipa
+          curl -fsSL -o countdown-day.ipa "$(cat ipa-url.txt)"
+          ls -lh countdown-day.ipa
 
       - name: 上传 IPA 产物（供 Release 任务消费）
         uses: actions/upload-artifact@v4
         with:
           name: ipa
-          path: build/export/*.ipa
+          path: countdown-day.ipa
           if-no-files-found: error
 
   # -----------------------------------------------------------
-  # 任务 3：发布到 GitHub Release（依赖 Android + iOS 都成功）
+  # 任务 3：发布到 GitHub Release
+  # build-ios 跳过（未启用）时也正常执行，只发布 Android APK
   # -----------------------------------------------------------
   release:
     name: 发布到 GitHub Release
@@ -249,26 +140,27 @@ jobs:
     permissions:
       contents: write
     steps:
-      - name: 下载所有构建产物
+      - name: 下载 Android APK 产物
         uses: actions/download-artifact@v4
         with:
-          path: artifacts
+          name: apk
+          path: release-files
 
-      - name: 展平产物（apk/ipa 都取出来放同一目录）
-        run: |
-          mkdir -p release-files
-          find artifacts -type f \( -name "*.apk" -o -name "*.ipa" \) \
-            -exec cp {} release-files/ \;
-          echo "Release 文件清单："
-          ls -lh release-files
+      - name: 下载 iOS IPA 产物（仅当 iOS 构建启用时存在）
+        if: ${{ vars.ENABLE_IOS_BUILD == 'true' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: ipa
+          path: release-files
+
+      - name: 确认 Release 文件清单
+        run: ls -lh release-files
 
       - name: 创建/更新 Release 并上传附件
         # 自动使用当前 tag 名（v*）；tag 已存在则更新附件
         uses: softprops/action-gh-release@v2
         with:
-          files: |
-            release-files/*.apk
-            release-files/*.ipa
+          files: release-files/*
           generate_release_notes: true
           draft: false
           prerelease: false
