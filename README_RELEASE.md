@@ -4,23 +4,26 @@
 
 - **触发**：仅推送 `v*` 开头的 git tag（如 `v1.0.0`）。普通 commit / PR 不会触发。
 - **Android 产物**：`countdown-day.apk`（签名、可直接安装），**免费可行**。
-- **iOS 产物**：`countdown-day.ipa`，**默认关闭**——因为不付费的 Apple 账号做不出可分发的 IPA（见下文「iOS 的现实」）。
+- **iOS 模拟器产物**：`countdown-day-simulator.ipa`（**无签名**、免费、无需 Apple 账号），只能装进 Mac 的 Xcode 模拟器。
+- **iOS 真机产物**：`countdown-day.ipa`，**默认关闭**——真机分发包必须付费 Apple 开发者账号（见下文「iOS 的现实」）。
 - **不做**：不上架 App Store / Google Play。
 
 流水线文件：`.github/workflows/release.yml`。
 
 ---
 
-## ⚠️ 0. iOS 的现实（必读，决定你要不要开 iOS 任务）
+## ⚠️ 0. iOS 的现实（必读）
 
-苹果强制所有 App 签名，**任何装进 iPhone 的应用包都绕不开苹果的证书体系**：
+苹果强制所有装进 **iPhone** 的应用签名。但「iOS 应用包」分两类，处理和代价完全不同：
 
-| 方案 | 费用 | 有效期 | 设备数 | 能否放 GitHub Release 供人下载 |
-|---|---|---|---|---|
-| 付费开发者账号（AdHoc/TestFlight） | $99/年 | 证书 1 年 | 不限（AdHoc 需登记 UDID） | ✅ |
-| 免费 Apple ID + 侧载（AltStore/爱思） | 免费 | **7 天续签** | **≤3 台** | ❌ 只能自用 |
+| 目标 | 产物 | 费用 / 是否需要 Apple 账号 | 能装在哪 |
+|---|---|---|---|
+| **Xcode 模拟器** | `countdown-day-simulator.ipa`（本 CI 默认免费产出） | 免费、无需 Apple 账号（无签名） | 仅 macOS 上的 Xcode 模拟器 |
+| **真实 iPhone** | `countdown-day.ipa`（默认关闭） | $99/年 付费开发者账号 | 已登记 UDID 的 iPhone |
+| 免费 Apple ID 侧载（AltStore/爱思） | 自用 | 免费 | 你自己 ≤3 台 iPhone，7 天续签 |
 
-> 结论：**免费账号产出的 iOS 包无法作为公开 Release 产物。** 免费路线只适合「你自己一台 iPhone + 一台 Mac」自装试用（详见第 ⑤ 节）。要对外分发，请花钱开开发者账号，然后按第 ② ④ 节启用 iOS 任务。
+> 结论 1：**无签名的 IPA 永远装不上真实 iPhone**——这是苹果签名机制决定的，不是打包工具的差异。
+> 结论 2：想免费拿一个「iOS 格式包」放 GitHub Release，**模拟器 IPA 就是能做到的极限**，适合演示/预览；想让别人真机安装，必须付费账号。
 
 Android 完全没有这些限制，APK 直接装。
 
@@ -126,10 +129,18 @@ build-android（EAS 云构建大约 10~20 分钟） ──► release（创建 R
 2. 手机开启「允许安装未知来源应用」（设置 → 安全 → 安装未知应用）。
 3. 点击直接安装。
 
-### iOS（IPA，见 ⑤ 和 ②）
+### iOS 模拟器 IPA（免费，macOS 上预览）
 
-- 付费账号 + AdHoc：只能装进已登记 UDID 的设备，且首次使用要在 iPhone「设置 → 通用 → VPN与设备管理 → 信任开发者证书」。
-- 免费账号：见下一节侧载方案。
+1. Release 页面下载 `countdown-day-simulator.ipa`，解压得到 `Payload/<App名>.app`。
+2. Mac 打开 Xcode → 打开任一 iOS 模拟器（或命令行 `xcrun simctl boot "iPhone 16"`）。
+3. 把 `.app` 直接拖进模拟器窗口即可安装运行。
+
+> 只装得上模拟器，装不进真实 iPhone（无签名，见第 ⑥ 节答疑）。
+
+### iOS 真机 IPA（需付费账号，见 ② 和 ⑤）
+
+- 付费账号 + AdHoc：只能装进已登记 UDID 的设备，首次使用要在 iPhone「设置 → 通用 → VPN与设备管理 → 信任开发者证书」。
+- 免费账号：见第 ⑤ 节侧载方案，自用且 7 天续签。
 
 ---
 
@@ -150,9 +161,10 @@ build-android（EAS 云构建大约 10~20 分钟） ──► release（创建 R
 | 现象 | 原因 / 处理 |
 |---|---|
 | Actions 没触发 | tag 名不是 `v*`；或本地 tag 未 push |
+| 模拟器 `.ipa` 装不进我的 iPhone | 正常：无签名包只能装 Xcode 模拟器；真机必须签名（免费自装见 ⑤，付费 AdHoc 见 ②） |
 | Android 报 `不是 Expo 授权用户` | `EXPO_TOKEN` 未配置或已过期；expo.dev 重新生成 |
 | 报 `app.json 未关联 EAS` | 仓库里 `extra.eas.projectId` 缺失；本地 `eas init` 补齐后提交 |
-| iOS 任务始终跳过 | 未设置仓库变量 `ENABLE_IOS_BUILD=true`（免费账号跳过是正常的） |
-| iOS 构建报证书/No profiles | 未付费开发者账号；或 Secrets 没配全 / 描述文件不含目标机 UDID |
-| Release 附件只有 apk | 属正常；iOS 未启用 |
+| iOS 真机任务始终跳过 | 未设置仓库变量 `ENABLE_IOS_BUILD=true`（免费账号跳过是正常的） |
+| iOS 真机构建报证书/No profiles | 未付费开发者账号；或 Secrets 没配全 / 描述文件不含目标机 UDID |
+| Release 附件里没有真机 ipa | 属正常：默认只发布 APK + 模拟器 IPA |
 | 同名 tag 已发布导致失败 | 删旧 tag + 旧 Release 后重推 |
