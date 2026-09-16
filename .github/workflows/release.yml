@@ -54,7 +54,7 @@ jobs:
         run: npm ci
 
       - name: 校验 EXPO_TOKEN 已配置
-        if: ${{ secrets.EXPO_TOKEN == '' }}
+        if: ${{ env.EXPO_TOKEN == '' }}
         run: |
           echo "::error::未配置 EXPO_TOKEN。请在仓库 Settings → Secrets → Actions 添加（详见 README_RELEASE.md）。"
           exit 1
@@ -176,7 +176,7 @@ jobs:
         run: npm ci
 
       - name: 校验 EXPO_TOKEN 已配置
-        if: ${{ secrets.EXPO_TOKEN == '' }}
+        if: ${{ env.EXPO_TOKEN == '' }}
         run: |
           echo "::error::未配置 EXPO_TOKEN。请在仓库 Settings → Secrets → Actions 添加（详见 README_RELEASE.md）。"
           exit 1
